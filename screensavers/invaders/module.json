@@ -1,0 +1,16 @@
+{
+  "id": "invaders",
+  "name": "Omarchy Invaders",
+  "description": "A retro invasion that plays itself: package swarms, dependency attacks where one hit takes out everything below it, a kernel boss, sudo power-ups, and a Quattro bonus stage. Something bigger turns up when the uptime is long enough.",
+  "categories": ["arcade", "omarchy", "chaotic"],
+  "entry": "Saver.qml",
+  "options": [
+    {
+      "key": "pace",
+      "type": "enum",
+      "label": "Pace",
+      "options": ["arcade", "frantic"],
+      "default": "arcade"
+    }
+  ]
+}

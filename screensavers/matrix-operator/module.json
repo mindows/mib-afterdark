@@ -1,0 +1,24 @@
+{
+  "id": "matrix-operator",
+  "name": "Matrix Operator",
+  "description": "The machine becomes an overdramatic command-and-control console: an operator dashboard, code rain with real events surfacing in it, a Hollywood intrusion sequence, and a live trace of processes and connections. Runs on a simulation unless live system data is on.",
+  "categories": ["system", "chaotic"],
+  "entry": "Saver.qml",
+  "system": true,
+  "options": [
+    {
+      "key": "view",
+      "type": "enum",
+      "label": "View",
+      "options": ["cycle", "operator", "rain", "intrusion", "trace"],
+      "default": "cycle"
+    },
+    {
+      "key": "glyphs",
+      "type": "enum",
+      "label": "Rain glyphs",
+      "options": ["katakana", "ascii", "binary"],
+      "default": "katakana"
+    }
+  ]
+}

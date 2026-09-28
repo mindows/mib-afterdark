@@ -1,0 +1,23 @@
+{
+  "id": "asteroids",
+  "name": "Asteroids",
+  "description": "A minimalist vector-space battle. The ship flies and fights on its own; in Omarchy mode the rocks are packages, prompts and dependency trees.",
+  "categories": ["arcade", "retro"],
+  "entry": "Saver.qml",
+  "options": [
+    {
+      "key": "rocks",
+      "type": "enum",
+      "label": "Rocks",
+      "options": ["omarchy", "classic"],
+      "default": "omarchy"
+    },
+    {
+      "key": "color",
+      "type": "enum",
+      "label": "Color",
+      "options": ["vector", "amber", "theme"],
+      "default": "vector"
+    }
+  ]
+}

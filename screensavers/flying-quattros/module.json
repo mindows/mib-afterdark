@@ -1,0 +1,30 @@
+{
+  "id": "flying-quattros",
+  "name": "Flying Quattros",
+  "description": "A tribute to the flying toaster and to Omarchy's Quattro release: winged rally cars cross the sky in formation, launch off invisible jumps, and trail dust. The longer the machine idles, the worse the traffic gets.",
+  "categories": ["omarchy", "retro", "chaotic"],
+  "entry": "Saver.qml",
+  "options": [
+    {
+      "key": "traffic",
+      "type": "enum",
+      "label": "Traffic",
+      "options": ["calm", "normal", "ridiculous"],
+      "default": "normal"
+    },
+    {
+      "key": "trails",
+      "type": "enum",
+      "label": "Trails",
+      "options": ["dust", "snow", "gravel", "none"],
+      "default": "dust"
+    },
+    {
+      "key": "sky",
+      "type": "enum",
+      "label": "Sky",
+      "options": ["night", "black"],
+      "default": "night"
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "id": "starfield",
+  "name": "Starfield",
+  "description": "Classic high-speed flight through an endless star field, from a faithful minimal cruise to completely excessive hyperspace.",
+  "categories": ["retro", "calm"],
+  "entry": "Saver.qml",
+  "options": [
+    {
+      "key": "speed",
+      "type": "enum",
+      "label": "Speed",
+      "options": ["cruise", "warp", "hyperspace"],
+      "default": "cruise"
+    },
+    {
+      "key": "density",
+      "type": "enum",
+      "label": "Stars",
+      "options": ["sparse", "normal", "dense"],
+      "default": "normal"
+    }
+  ]
+}

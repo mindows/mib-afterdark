@@ -1,0 +1,23 @@
+{
+  "id": "pong",
+  "name": "Pong Forever",
+  "description": "Quattro and Tux, locked in a Pong match that may continue for months. The lifetime score serves absolutely no purpose and therefore is preserved.",
+  "categories": ["arcade", "retro", "calm"],
+  "entry": "Saver.qml",
+  "options": [
+    {
+      "key": "variant",
+      "type": "enum",
+      "label": "Variant",
+      "options": ["random", "classic", "impossible", "four-paddle", "multiball", "tiny-paddle", "quattro-vs-tux", "ludicrous"],
+      "default": "random"
+    },
+    {
+      "key": "color",
+      "type": "enum",
+      "label": "Color",
+      "options": ["phosphor", "theme"],
+      "default": "phosphor"
+    }
+  ]
+}

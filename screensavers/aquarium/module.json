@@ -1,0 +1,24 @@
+{
+  "id": "aquarium",
+  "name": "Terminal Aquarium",
+  "description": "A living ASCII tank of fish, crabs, seaweed and the occasional submarine. With live system data on, CPU makes bubbles, network traffic brings schools of fish, SSH sessions summon submarines, and the battery sets the light.",
+  "categories": ["weird", "calm", "system"],
+  "entry": "Saver.qml",
+  "system": true,
+  "options": [
+    {
+      "key": "population",
+      "type": "enum",
+      "label": "Population",
+      "options": ["sparse", "normal", "crowded"],
+      "default": "normal"
+    },
+    {
+      "key": "water",
+      "type": "enum",
+      "label": "Water",
+      "options": ["deep", "tropical", "theme"],
+      "default": "deep"
+    }
+  ]
+}

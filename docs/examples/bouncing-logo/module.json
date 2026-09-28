@@ -1,0 +1,22 @@
+{
+  "id": "bouncing-logo",
+  "name": "Bouncing Logo",
+  "description": "An example community module: a word drifts around the screen and changes color at every wall, the way the DVD logo did. Copy this folder to ~/.config/mib-afterdark/screensavers/ to try it.",
+  "categories": ["retro", "calm"],
+  "entry": "Saver.qml",
+  "options": [
+    {
+      "key": "word",
+      "type": "enum",
+      "label": "Word",
+      "options": ["OMARCHY", "LINUX", "HYPRLAND", "AFTER DARK"],
+      "default": "OMARCHY"
+    },
+    {
+      "key": "corners",
+      "type": "boolean",
+      "label": "Celebrate corners",
+      "default": true
+    }
+  ]
+}

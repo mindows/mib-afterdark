@@ -1,0 +1,22 @@
+{
+  "id": "plasma",
+  "name": "Plasma",
+  "description": "Old-school demo-scene plasma, drawn on the GPU. Minimal configuration. Maximum late-1990s computer energy.",
+  "categories": ["retro", "calm"],
+  "entry": "Saver.qml",
+  "options": [
+    {
+      "key": "palette",
+      "type": "enum",
+      "label": "Palette",
+      "options": ["demo", "fire", "ocean", "acid", "theme"],
+      "default": "demo"
+    },
+    {
+      "key": "scroller",
+      "type": "boolean",
+      "label": "Greetings scroller",
+      "default": true
+    }
+  ]
+}
