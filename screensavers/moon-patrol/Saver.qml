@@ -65,7 +65,7 @@ Item {
   // ---------------------------------------------------------------- colors
 
   function mix(a, b, t) {
-    return Qt.rgba(a.r + (b.r - a.r) * t, a.g + (b.g - a.g) * t, a.b + (b.b - a.b) * t, 1)
+    return Qt.tint(a, Qt.rgba(b.r, b.g, b.b, t))
   }
 
   // Scenery and HUD. The vehicles and saucers keep their arcade colors so
@@ -311,13 +311,13 @@ Item {
           c.bounce = [2 * root.px, 2 * root.px, 2 * root.px]
         }
       }
-      // Each wheel rides its own bumps.
+      // Each wheel rides its own bumps, about three a second at any frame rate.
       for (var w = 0; w < 3; w++) {
         c.bounce[w] *= Math.pow(0.002, dt)
-        if (c.h <= 0 && Util.chance(18)) c.bounce[w] = -Util.rand(0, 1.2) * root.px
+        if (c.h <= 0 && Math.random() < 3.3 * dt) c.bounce[w] = -Util.rand(0, 1.2) * root.px
       }
-      // The quattro throws up a rooster tail of moon dust.
-      if (root.rally && c.h <= 0 && root.particles.length < root.maxParticles / 2 && Util.chance(2)) {
+      // The quattro throws up a rooster tail of moon dust, about 30 puffs a second.
+      if (root.rally && c.h <= 0 && root.particles.length < root.maxParticles / 2 && Math.random() < 30 * dt) {
         root.particles.push({
           x: root.buggyX + 4 * root.px, y: root.groundY - root.px,
           vx: -root.speed * Util.rand(0.3, 0.8), vy: -Util.rand(30, 140) * root.unit,
@@ -353,8 +353,10 @@ Item {
       }
     }
 
+    // Only forward: a resize changes pointLength, and must not count a
+    // point (or a lap, at A) for going back.
     var reached = Math.floor(root.dist / root.pointLength)
-    if (reached !== root.point) {
+    if (reached > root.point) {
       root.point = reached
       root.score += 500
       if (root.point % 26 === 0) {
@@ -413,7 +415,7 @@ Item {
       bomb.vy += 500 * root.unit * dt
       bomb.y += bomb.vy * dt
       if (c.alive && bomb.x > root.buggyX && bomb.x < root.buggyX + root.carW
-          && bomb.y > root.groundY - 10 * root.px - c.h && bomb.y < root.groundY - c.h) {
+          && bomb.y > root.groundY - (root.rally ? 11 : 10) * root.px - c.h && bomb.y < root.groundY - c.h) {
         crash()
         continue
       }

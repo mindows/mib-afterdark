@@ -194,7 +194,7 @@ fragment shaders, and nothing redraws a full-screen canvas every frame. On a
 ## Development
 
 Work in your own copy of this repository, and point Omarchy at it with a
-symlink in place of an installed copy:
+symlink in place of an installed copy. Run this from the copy's top folder:
 
 ```bash
 ln -sfn "$PWD" ~/.config/omarchy/plugins/io.github.mindows.mib-afterdark
