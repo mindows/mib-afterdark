@@ -303,19 +303,13 @@ Item {
   property bool askingReplace: false
   readonly property string builtInToggle: Quickshell.env("HOME") + "/.local/state/omarchy/toggles/screensaver-off"
 
-  // A change reported while a look is under way gets a fresh look after it,
-  // so the answer is never older than the last change.
-  property bool builtInRecheck: false
-
   function refreshBuiltIn() {
-    if (builtInProbe.running) root.builtInRecheck = true
-    else builtInProbe.running = true
+    builtInFile.reload()
   }
 
   function setBuiltInOff(off) {
     Quickshell.execDetached(["omarchy-toggle", "screensaver-off", off ? "on" : "off"])
     root.builtInOff = off
-    refreshTimer.restart()
   }
 
   // The first-run question. Closing the panel without answering counts as
@@ -327,41 +321,30 @@ Item {
     if (replace) root.setBuiltInOff(true)
   }
 
-  Timer {
-    id: refreshTimer
-    interval: 500
-    onTriggered: root.refreshBuiltIn()
-  }
-
   // The panel's switch shows Omarchy's own toggle, so it always tells the
-  // truth, however the toggle came to be set; the toggles folder is watched
-  // for changes made elsewhere.
+  // truth, however the toggle came to be set. The toggle is a file that
+  // either exists or not; it is watched, so a change made elsewhere shows.
   FileView {
-    path: Quickshell.env("HOME") + "/.local/state/omarchy/toggles"
+    id: builtInFile
+    path: root.builtInToggle
     watchChanges: true
     printErrors: false
-    onFileChanged: root.refreshBuiltIn()
+    onFileChanged: reload()
+    onLoaded: root.builtInSeen(true)
+    onLoadFailed: root.builtInSeen(false)
   }
 
-  Process {
-    id: builtInProbe
-    command: ["test", "-e", root.builtInToggle]
-    onExited: function(code) {
-      root.builtInOff = code === 0
-      if (root.builtInRecheck) {
-        root.builtInRecheck = false
-        Qt.callLater(root.refreshBuiltIn)
-      }
-      if (!root.firstRunPending) return
-      root.firstRunPending = false
-      // Already switched off by the user: there is nothing to ask.
-      if (root.builtInOff) {
-        store.setAskedReplace()
-        return
-      }
-      root.askingReplace = true
-      root.opened = true
+  function builtInSeen(off) {
+    root.builtInOff = off
+    if (!root.firstRunPending) return
+    root.firstRunPending = false
+    // Already switched off by the user: there is nothing to ask.
+    if (off) {
+      store.setAskedReplace()
+      return
     }
+    root.askingReplace = true
+    root.opened = true
   }
 
   Connections {

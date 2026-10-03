@@ -175,13 +175,13 @@ Item {
     spark(s.x, root.shipY + 4 * root.px, "#ffffff", 40)
   }
 
-  // Whether the way from `from` to `to` passes under no bomb but the ones
-  // already over `from`.
+  // Whether the way from `from` to `to` (a spot already clear) passes
+  // under no bomb but the ones already over `from`.
   function pathOpen(falling, from, to, reach) {
     var a = Math.min(from, to), z = Math.max(from, to)
     for (var i = 0; i < falling.length; i++) {
       var x = falling[i].x
-      if (Math.abs(x - from) >= reach && x > a - reach && x < z + reach && Math.abs(x - to) >= reach) return false
+      if (Math.abs(x - from) >= reach && x > a - reach && x < z + reach) return false
     }
     return true
   }
@@ -264,7 +264,7 @@ Item {
         var fx = car.x + car.w / 2 + car.vx * (root.shipY - car.y) / root.shotSpeed
         if (fx > 0 && fx < root.width) targets.push({ key: car.key, x: fx, v: car.vx })
       }
-    } else {
+    } else if (m) {
       // The lowest enemy of each column.
       var lowest = {}
       for (var e = 0; e < root.enemies.length; e++) {

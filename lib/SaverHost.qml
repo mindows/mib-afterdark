@@ -19,7 +19,7 @@ Item {
 
   // Running a screensaver that uses live data: the runtime keeps its feed
   // going while any host says so.
-  readonly property bool wantsFeed: running && !!shown && shown.system === true
+  readonly property bool wantsFeed: running && !!shown && shown.system === true && failure === ""
   onWantsFeedChanged: if (runtime) runtime.wantFeed(holder, wantsFeed)
   onRuntimeChanged: if (runtime) runtime.wantFeed(holder, wantsFeed)
   Component.onDestruction: if (runtime) runtime.wantFeed(holder, false)
