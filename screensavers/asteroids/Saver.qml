@@ -230,8 +230,9 @@ Item {
       s.respawn -= dt
       if (s.respawn <= 0) {
         if (root.lives <= 0) {
-          showBanner("GAME OVER", 3)
+          // After newGame(), whose first wave would replace it.
           newGame()
+          showBanner("GAME OVER", 3)
         } else {
           resetShip()
         }
