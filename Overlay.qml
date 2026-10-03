@@ -63,21 +63,14 @@ Item {
     userDir: store.dirsReady ? store.userModulesDir : ""
   }
 
-  // Also while the control panel previews a system screensaver, or its
-  // preview would show a frozen "LIVE" console.
+  // Live data runs only while some screensaver that uses it is running on
+  // screen, full screen or in the control panel's preview. Each SaverHost
+  // counts itself in and out.
+  property int feedUsers: 0
+
   SystemFeed {
     id: feed
-    active: store.settings.liveData
-      && ((root.saverActive && !root.paused && root.anyShownNeedsSystem())
-        || (root.opened && !root.saverActive && !!controlPanel.selected && controlPanel.selected.system))
-  }
-
-  function anyShownNeedsSystem() {
-    for (var name in root.screenModules) {
-      var m = catalog.module(root.screenModules[name])
-      if (m && m.system) return true
-    }
-    return false
+    active: store.settings.liveData && root.feedUsers > 0
   }
 
   // ------------------------------------------------------------ choosing
@@ -314,8 +307,9 @@ Item {
     refreshTimer.restart()
   }
 
+  // The panel's switch shows Omarchy's own toggle, so it always tells the
+  // truth, however the toggle came to be set.
   function setReplaceBuiltIn(on) {
-    store.set("replaceBuiltIn", on)
     setBuiltInOff(on)
   }
 
@@ -520,7 +514,6 @@ Item {
   }
 
   ControlPanel {
-    id: controlPanel
     runtime: root
     shown: root.opened
     onCloseRequested: root.dismissPanel()

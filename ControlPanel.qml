@@ -416,7 +416,7 @@ PanelWindow {
           module: panel.shown ? panel.selected : null
           runtime: panel.runtime
           preview: true
-          running: panel.shown
+          running: panel.shown && !panel.askingReplace
         }
 
         MouseArea {
@@ -561,7 +561,7 @@ PanelWindow {
           }
           Toggle {
             text: "Replace Omarchy's screensaver"
-            checked: panel.settings.replaceBuiltIn === true
+            checked: !!panel.runtime && panel.runtime.builtInOff
             onToggled: panel.runtime.setReplaceBuiltIn(!checked)
           }
           Label {

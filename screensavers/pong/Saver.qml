@@ -150,7 +150,9 @@ Item {
   // penguin, both deeper than a bar.
   function paddleDepth(p) {
     if (root.variant === "quattro-vs-tux") {
-      if (p.side === "left") return carPaddle.height
+      // The car is drawn at three-quarters, so its box has empty corners;
+      // the ball meets the car, not the box.
+      if (p.side === "left") return carPaddle.height * 0.85
       if (p.side === "right") return tuxPaddle.width
     }
     return root.paddleThickness
@@ -364,6 +366,7 @@ Item {
     spacing: root.u * 2
     Quattro {
       anchors.verticalCenter: parent.verticalCenter
+      facingLeft: false
       livery: 1
       pixel: root.u * 0.28
     }
@@ -412,6 +415,7 @@ Item {
   Quattro {
     id: carPaddle
     visible: root.variant === "quattro-vs-tux"
+    facingLeft: false
     pixel: root.paddleLength / Sprites.quattroColumns
     rotation: -90
   }

@@ -57,7 +57,7 @@ Item {
       slot: slot, kind: kind, pixel: p,
       x: x, y: y, vx: 0, vy: 0, rot: 0, spin: 0,
       livery: livery === undefined ? Util.randInt(0, Sprites.quattroLiveries - 1) : livery,
-      trail: 0, dirty: true, left: true, gravity: 0
+      trail: 0, dirty: true, left: true, gravity: 0, tilt: 0
     }
     var speed = p * Util.rand(34, 46)
     if (kind === "flyer" || kind === "giant") {
@@ -67,6 +67,9 @@ Item {
       car.left = false
       car.vx = speed
       car.vy = -speed * 0.5
+      // The art's nose points down and to the side; tilted up, so it leads
+      // the climb instead of sliding up backwards.
+      car.tilt = -57
     } else if (kind === "ground") {
       car.vx = -speed * 1.6
       car.vy = 0
@@ -94,7 +97,7 @@ Item {
     }
     if (root.host && root.host.rare(260) && !root.preview) {
       // Rare: a quattro so big it fills the sky on its way across.
-      var gp = root.height / 13 / root.unit * 0.8
+      var gp = root.height / Sprites.quattroRows / root.unit * 0.8
       var giant = makeCar("giant", gp, root.width, -root.height * 0.4)
       if (giant) { giant.vx *= 0.9; giant.vy *= 0.9 }
       return
@@ -123,13 +126,17 @@ Item {
 
   function emitPuff(car) {
     if (root.trails === "none" || root.puffs.length >= root.maxPuffs) return
-    // The rear bumper, up and to the right of a left-facing car.
+    // The rear bumper, up and to the right of a left-facing car, turned
+    // with the car about its centre.
     var w = Sprites.quattroColumns * car.pixel
     var h = Sprites.quattroRows * car.pixel
-    var rearX = car.left ? car.x + w * 0.84 : car.x + w * 0.16
+    var rx = (car.left ? 0.34 : -0.34) * w, ry = -0.03 * h
+    var turn = (car.tilt + car.rot) * Math.PI / 180
+    var rearX = car.x + w / 2 + rx * Math.cos(turn) - ry * Math.sin(turn)
+    var rearY = car.y + h / 2 + rx * Math.sin(turn) + ry * Math.cos(turn)
     var colors = root.trailColors[root.trails] || root.trailColors.dust
     root.puffs.push({
-      x: rearX + Util.rand(-2, 2) * car.pixel, y: car.y + h * 0.47 + Util.rand(-1, 1) * car.pixel,
+      x: rearX + Util.rand(-2, 2) * car.pixel, y: rearY + Util.rand(-1, 1) * car.pixel,
       vx: -car.vx * 0.08 + Util.rand(-8, 8), vy: Util.rand(-14, 4) * root.unit,
       size: car.pixel * Util.rand(2.5, 4.5), grow: car.pixel * 6,
       life: 0, ttl: Util.rand(0.6, 1.1), color: Util.pick(colors),
@@ -230,7 +237,7 @@ Item {
       }
       item.x = car.x
       item.y = car.y
-      item.rotation = car.rot
+      item.rotation = car.tilt + car.rot
       item.visible = true
     }
     for (var p = 0; p < root.maxPuffs; p++) {

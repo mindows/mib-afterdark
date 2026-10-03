@@ -36,7 +36,6 @@ Item {
     favorites: [],
     liveData: false,
     sameOnAllScreens: true,
-    replaceBuiltIn: false,
     options: {}
   })
 
@@ -70,7 +69,6 @@ Item {
     out.favorites = idList(s.favorites)
     out.liveData = typeof s.liveData === "boolean" ? s.liveData : d.liveData
     out.sameOnAllScreens = typeof s.sameOnAllScreens === "boolean" ? s.sameOnAllScreens : d.sameOnAllScreens
-    out.replaceBuiltIn = typeof s.replaceBuiltIn === "boolean" ? s.replaceBuiltIn : d.replaceBuiltIn
     out.options = {}
     if (s.options && typeof s.options === "object" && !Array.isArray(s.options)) {
       for (var moduleId in s.options) {
@@ -101,8 +99,9 @@ Item {
 
   function normalizeState(raw) {
     var s = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {}
-    // Earlier builds switched without asking and recorded it as tookOver.
-    var out = { modules: {}, askedReplace: s.askedReplace === true || s.tookOver === true }
+    // Earlier builds recorded the switch either way as tookOver: true when
+    // they switched Omarchy's off, false when the user switched it back.
+    var out = { modules: {}, askedReplace: s.askedReplace === true || typeof s.tookOver === "boolean" }
     if (s.modules && typeof s.modules === "object") {
       for (var id in s.modules) {
         if (!/^[a-z0-9][a-z0-9-]{0,40}$/.test(id)) continue

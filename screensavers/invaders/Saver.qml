@@ -46,11 +46,12 @@ Item {
   property int animFrame: 0
   property var cascade: []
 
-  property var ship: ({ x: 0, vx: 0, alive: true, respawn: 0, cooldown: 0, sudo: 0, decide: 0, targetKey: "", trackKey: "", trackX: 0, trackV: 0, aimError: 0, leadSkill: 1, pace: 1, wander: -1 })
+  property var ship: freshShip(0)
   property var shots: []
   property var bombs: []
   property var sparks: []
   property var bonusCars: []
+  property int carSerial: 0
   property var capsule: null
   property var boss: null
   property real fireClock: 1
@@ -74,7 +75,16 @@ Item {
     return n
   }
 
+  // The defender, at `x`, with nothing in mind yet.
+  function freshShip(x) {
+    return { x: x, vx: 0, alive: true, respawn: 0, cooldown: 0, sudo: 0, decide: 0, targetKey: "", trackKey: "", trackX: 0, trackV: 0, aimError: 0, leadSkill: 1, pace: 1, wander: -1 }
+  }
+
   function nextWave() {
+    // Targets are named by column or "boss", names the next wave reuses, so
+    // the defender starts it with nothing in mind.
+    root.ship.targetKey = ""
+    root.ship.trackKey = ""
     root.waveIndex = (root.waveIndex + 1) % root.waveOrder.length
     if (root.waveIndex === 0) root.level++
     root.waveKind = root.waveOrder[root.waveIndex]
@@ -128,7 +138,7 @@ Item {
     root.lives = 3
     root.level = 0
     root.waveIndex = -1
-    root.ship = { x: root.width / 2, vx: 0, alive: true, respawn: 0, cooldown: 0, sudo: 0, decide: 0, targetKey: "", trackKey: "", trackX: 0, trackV: 0, aimError: 0, leadSkill: 1, pace: 1, wander: -1 }
+    root.ship = freshShip(root.width / 2)
     nextWave()
   }
 
@@ -183,15 +193,31 @@ Item {
 
     // Dodge first: a bomb that will land on us soon. A bomb stays a threat
     // until it has fallen past the bottom of the ship, not just its top.
-    var dodge = 0
+    var lo = shipW / 2 + 10 * root.unit, hi = root.width - shipW / 2 - 10 * root.unit
     var list = threats()
     var falling = []
     for (var i = 0; i < list.length; i++) {
       var b = list[i]
       var t = (root.shipY + 8 * root.px - b.y) / Math.max(1, b.vy)
-      if (t <= 0 || t >= 0.7) continue
-      falling.push(b)
-      if (Math.abs(b.x - center) < shipW * 0.9) dodge += b.x < center ? 1 : -1
+      if (t > 0 && t < 0.7) falling.push(b)
+    }
+    function clear(x) {
+      for (var j = 0; j < falling.length; j++) if (Math.abs(falling[j].x - x) < shipW * 0.9) return false
+      return true
+    }
+    // Under a bomb, head for the nearest spot clear of all of them, so bombs
+    // on both sides (a boss volley) never cancel out into standing still.
+    var dodge = 0
+    if (!clear(center)) {
+      var escape = -1
+      for (var g = 0; g < falling.length; g++) {
+        var sides = [falling[g].x - shipW, falling[g].x + shipW]
+        for (var h = 0; h < 2; h++) {
+          var x = sides[h]
+          if (x >= lo && x <= hi && clear(x) && (escape < 0 || Math.abs(x - center) < Math.abs(escape - center))) escape = x
+        }
+      }
+      dodge = escape >= 0 && escape < center ? -1 : 1
     }
 
     // A fresh aim, pace and mood every so often.
@@ -213,7 +239,6 @@ Item {
       for (var q = 0; q < root.bonusCars.length; q++) {
         var car = root.bonusCars[q]
         var fx = car.x + car.w / 2 + car.vx * (root.shipY - car.y) / root.shotSpeed
-        if (!car.key) car.key = "car:" + Math.random()
         if (fx > 0 && fx < root.width) targets.push({ key: car.key, x: fx, v: car.vx })
       }
     } else {
@@ -223,9 +248,10 @@ Item {
         var en = root.enemies[e]
         if (en.alive && (!lowest[en.col] || lowest[en.col].row < en.row)) lowest[en.col] = en
       }
-      var marchV = root.formDir * root.marchStep / marchInterval()
+      var m = march()
+      var marchV = root.formDir * root.marchStep / m.interval
       for (var c in lowest)
-        targets.push({ key: "col:" + c, x: enemyX(lowest[c]) + 5.5 * root.px, lead: marchLead(root.shipY - enemyY(lowest[c])), v: marchV })
+        targets.push({ key: "col:" + c, x: enemyX(lowest[c]) + 5.5 * root.px, lead: marchLead(root.shipY - enemyY(lowest[c]), m), v: marchV })
     }
     // Keep after the chosen target until it is shot at or gone. A new one is
     // usually the nearest, sometimes another one not far off.
@@ -261,12 +287,7 @@ Item {
     var accel = speed * (dodge !== 0 ? 14 : 5)
     s.vx += Util.clamp(want - s.vx, -accel * dt, accel * dt)
     // Wait beside a falling bomb rather than slide back under it.
-    if (dodge === 0) {
-      for (var f = 0; f < falling.length; f++) {
-        if (Math.abs(falling[f].x - (center + s.vx * dt)) < shipW * 0.9) { s.vx = 0; break }
-      }
-    }
-    var lo = shipW / 2 + 10 * root.unit, hi = root.width - shipW / 2 - 10 * root.unit
+    if (dodge === 0 && !clear(center + s.vx * dt)) s.vx = 0
     s.x = Util.clamp(s.x + s.vx * dt, lo, hi)
     if (s.x === lo || s.x === hi) s.vx = 0
 
@@ -290,31 +311,9 @@ Item {
     return Math.max(0.05, 0.62 * aliveEnemies() / (root.rows * root.cols)) * (root.frantic ? 0.6 : 1) / (1 + root.level * 0.15)
   }
 
-  // How far the formation will have marched sideways by the time a shot
-  // fired now climbs `distance`, stopping at the edge where it turns.
-  function marchLead(distance) {
-    var steps = Math.floor((root.stepClock + distance / root.shotSpeed) / marchInterval())
-    if (steps <= 0) return 0
-    var minX = 1e9, maxX = -1e9
-    for (var i = 0; i < root.enemies.length; i++) {
-      var e = root.enemies[i]
-      if (!e.alive) continue
-      minX = Math.min(minX, enemyX(e))
-      maxX = Math.max(maxX, enemyX(e) + 11 * root.px)
-    }
-    var room = root.formDir > 0 ? root.width - 20 * root.unit - maxX : minX - 20 * root.unit
-    steps = Math.min(steps, Math.max(0, Math.floor(room / root.marchStep)))
-    return root.formDir * root.marchStep * steps
-  }
-
-  function stepFormation(dt) {
-    var alive = aliveEnemies()
-    if (alive === 0) return
-    var interval = marchInterval()
-    root.stepClock += dt
-    if (root.stepClock < interval) return
-    root.stepClock = 0
-    root.animFrame = 1 - root.animFrame
+  // The formation's march as it stands: its step interval, and how many
+  // steps it can take before it reaches the edge and turns.
+  function march() {
     var minX = 1e9, maxX = -1e9, maxY = 0
     for (var i = 0; i < root.enemies.length; i++) {
       var e = root.enemies[i]
@@ -323,14 +322,33 @@ Item {
       maxX = Math.max(maxX, enemyX(e) + 11 * root.px)
       maxY = Math.max(maxY, enemyY(e) + 8 * root.px)
     }
-    var stepX = root.marchStep * root.formDir
-    if (maxX + stepX > root.width - 20 * root.unit || minX + stepX < 20 * root.unit) {
+    var room = root.formDir > 0 ? root.width - 20 * root.unit - maxX : minX - 20 * root.unit
+    return { interval: marchInterval(), stepsLeft: Math.max(0, Math.floor(room / root.marchStep)), maxY: maxY }
+  }
+
+  // How far the formation will have marched sideways by the time a shot
+  // fired now climbs `distance`, stopping at the edge where it turns.
+  function marchLead(distance, m) {
+    var steps = Math.floor((root.stepClock + distance / root.shotSpeed) / m.interval)
+    if (steps <= 0) return 0
+    return root.formDir * root.marchStep * Math.min(steps, m.stepsLeft)
+  }
+
+  function stepFormation(dt) {
+    var alive = aliveEnemies()
+    if (alive === 0) return
+    root.stepClock += dt
+    if (root.stepClock < marchInterval()) return
+    root.stepClock = 0
+    root.animFrame = 1 - root.animFrame
+    var m = march()
+    if (m.stepsLeft < 1) {
       root.formY += root.cellH * 0.4
       root.formDir = -root.formDir
     } else {
-      root.formX += stepX
+      root.formX += root.marchStep * root.formDir
     }
-    if (maxY >= root.shipY) {
+    if (m.maxY >= root.shipY) {
       // They landed.
       showBanner("SYSTEM COMPROMISED", 3)
       root.lives = 0
@@ -358,9 +376,8 @@ Item {
           newGame()
           return
         }
-        s.alive = true
-        s.x = root.width / 2
-        s.vx = 0
+        root.ship = freshShip(root.width / 2)
+        s = root.ship
         root.bombs = []
       }
     }
@@ -397,14 +414,14 @@ Item {
     if (root.boss) {
       var bossItem = root.boss
       bossItem.x += bossItem.vx * dt
-      var half = bossW() / 2
+      var half = bossW(bossItem.kind) / 2
       if (bossItem.x < half + 20 * root.unit || bossItem.x > root.width - half - 20 * root.unit) bossItem.vx = -bossItem.vx
       bossItem.x = Util.clamp(bossItem.x, half + 20 * root.unit, root.width - half - 20 * root.unit)
       bossItem.hurt = Math.max(0, bossItem.hurt - dt)
       bossItem.fire -= dt
       if (bossItem.fire <= 0 && s.alive) {
         for (var k = -2; k <= 2; k++)
-          root.bombs.push({ x: bossItem.x + k * 30 * root.unit, y: bossItem.y + bossH() / 2, vy: (260 + Math.abs(k) * 30) * root.unit })
+          root.bombs.push({ x: bossItem.x + k * 30 * root.unit, y: bossItem.y + bossH(bossItem.kind) / 2, vy: (260 + Math.abs(k) * 30) * root.unit })
         bossItem.fire = Util.rand(1.2, 2.2)
       }
     }
@@ -415,7 +432,7 @@ Item {
       if (root.bonusClock > 2 && root.bonusCars.length < 5 && Util.chance(40)) {
         var left = Math.random() < 0.5
         var cw = Sprites.quattroColumns * root.px * 0.7
-        root.bonusCars.push({ x: left ? -cw : root.width, y: Util.rand(0.12, 0.45) * root.height, vx: (left ? 1 : -1) * Util.rand(220, 380) * root.unit, w: cw, left: !left, hit: false })
+        root.bonusCars.push({ key: "car:" + (++root.carSerial), x: left ? -cw : root.width, y: Util.rand(0.12, 0.45) * root.height, vx: (left ? 1 : -1) * Util.rand(220, 380) * root.unit, w: cw, left: !left, hit: false })
       }
       var keptCars = []
       for (var q = 0; q < root.bonusCars.length; q++) {
@@ -443,7 +460,7 @@ Item {
           spent = true
         }
       }
-      if (!spent && root.boss && Math.abs(shot.x - root.boss.x) < bossW() / 2 && Math.abs(shot.y - root.boss.y) < bossH() / 2) {
+      if (!spent && root.boss && Math.abs(shot.x - root.boss.x) < bossW(root.boss.kind) / 2 && Math.abs(shot.y - root.boss.y) < bossH(root.boss.kind) / 2) {
         root.boss.hp--
         root.boss.hurt = 0.08
         spent = true
@@ -509,8 +526,9 @@ Item {
     sync()
   }
 
-  function bossW() { return root.boss && root.boss.kind === "tux" ? 12 * root.px * 3 : 180 * root.unit }
-  function bossH() { return root.boss && root.boss.kind === "tux" ? 12 * root.px * 3 : 150 * root.unit }
+  // The boss's size, for drawing it and for hitting it alike.
+  function bossW(kind) { return kind === "tux" ? 12 * root.px * 3 : 180 * root.unit }
+  function bossH(kind) { return kind === "tux" ? 12 * root.px * 3 : 150 * root.unit }
 
   // The ship, boss and capsule change in place, which no binding sees, so
   // they are placed here every frame like everything else.
@@ -653,8 +671,8 @@ Item {
     property string kind: "kernel"
     property real health: 1
     visible: false
-    width: kind === "tux" ? 12 * root.px * 3 : 180 * root.unit
-    height: kind === "tux" ? 12 * root.px * 3 : 150 * root.unit
+    width: root.bossW(kind)
+    height: root.bossH(kind)
 
     Rectangle {
       visible: bossItem.kind === "kernel"
