@@ -336,7 +336,7 @@ Item {
     } else {
       c.respawn -= dt
       if (c.respawn <= 0) {
-        if (root.lives < 0) {
+        if (root.lives <= 0) {
           // After newGame(), which would replace it with "POINT A".
           newGame()
           showBanner("GAME OVER", 3)
@@ -392,8 +392,17 @@ Item {
       // by every saucer dropping at once.
       if (c.alive) ufo.bomb -= dt
       if (ufo.bomb <= 0 && c.alive) {
-        root.bombs.push({ x: ufo.x + 6 * root.px, y: ufo.y + 6 * root.px, vy: 120 * root.unit })
-        ufo.bomb = root.frantic ? Util.rand(0.8, 2) : Util.rand(1.2, 3)
+        // Bombs fall straight down and the car can only shoot straight up
+        // from its roof gun, so one landing anywhere else on the car can't
+        // be stopped. Saucers mostly hold those until they are past it.
+        var dropX = ufo.x + 6 * root.px
+        var overCar = dropX > root.buggyX - root.px && dropX < root.buggyX + root.carW + root.px
+        if (overCar && Math.abs(dropX - roofGun().x) >= 3 * root.px && !Util.chance(6)) {
+          ufo.bomb = (root.carW + 2 * root.px) / Math.max(1, Math.abs(ufo.vx))
+        } else {
+          root.bombs.push({ x: dropX, y: ufo.y + 6 * root.px, vy: 120 * root.unit })
+          ufo.bomb = root.frantic ? Util.rand(0.8, 2) : Util.rand(1.2, 3)
+        }
       }
       // Still patrolling (the back of a flight starts further off screen), or
       // not yet gone after leaving.
