@@ -175,6 +175,17 @@ Item {
     spark(s.x, root.shipY + 4 * root.px, "#ffffff", 40)
   }
 
+  // Whether the way from `from` to `to` passes under no bomb but the ones
+  // already over `from`.
+  function pathOpen(falling, from, to, reach) {
+    var a = Math.min(from, to), z = Math.max(from, to)
+    for (var i = 0; i < falling.length; i++) {
+      var x = falling[i].x
+      if (Math.abs(x - from) >= reach && x > a - reach && x < z + reach && Math.abs(x - to) >= reach) return false
+    }
+    return true
+  }
+
   // Whether `x` is out of reach of every bomb in `falling`.
   function clearOf(falling, x, reach) {
     for (var i = 0; i < falling.length; i++) if (Math.abs(falling[i].x - x) < reach) return false
@@ -208,18 +219,24 @@ Item {
       if (t > 0 && t < 0.7) falling.push(b)
     }
     // Under a bomb, head for the nearest spot clear of all of them, so bombs
-    // on both sides (a boss volley) never cancel out into standing still.
-    // With no clear spot in reach, get away from the nearest one.
+    // on both sides (a boss volley) never cancel out into standing still,
+    // preferring one it can reach without passing under another. With no
+    // clear spot in reach, get away from the nearest bomb.
     var reach = shipW * 0.9
     var dodge = 0
     if (!clearOf(falling, center, reach)) {
-      var escape = -1, nearest = null
+      var escape = -1, escapeOpen = false, nearest = null
       for (var g = 0; g < falling.length; g++) {
         var bx = falling[g].x
         if (!nearest || Math.abs(bx - center) < Math.abs(nearest.x - center)) nearest = falling[g]
         for (var side = -1; side <= 1; side += 2) {
           var x = bx + side * shipW
-          if (x >= lo && x <= hi && clearOf(falling, x, reach) && (escape < 0 || Math.abs(x - center) < Math.abs(escape - center))) escape = x
+          if (x < lo || x > hi || !clearOf(falling, x, reach)) continue
+          var open = pathOpen(falling, center, x, reach)
+          if (escape < 0 || (open && !escapeOpen) || (open === escapeOpen && Math.abs(x - center) < Math.abs(escape - center))) {
+            escape = x
+            escapeOpen = open
+          }
         }
       }
       if (escape >= 0) dodge = escape < center ? -1 : 1

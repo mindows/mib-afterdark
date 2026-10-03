@@ -22,6 +22,8 @@ Item {
 
   // Layout unit: everything scales with the smaller screen side.
   readonly property real u: Math.max(2, Math.min(width, height) / 90)
+  // The gap between a screen edge and the paddle against it.
+  readonly property real edgeMargin: u * 3
   readonly property real ballSize: u * 1.6
   readonly property real paddleThickness: u * 1.4
   readonly property real paddleLength: (variant === "tiny-paddle" ? 3.5 : (variant === "quattro-vs-tux" ? 13 : 12)) * u
@@ -159,7 +161,7 @@ Item {
   }
 
   function paddleLine(p) {
-    var m = root.u * 3
+    var m = root.edgeMargin
     if (p.side === "left") return m + paddleDepth(p)
     if (p.side === "right") return root.width - m - paddleDepth(p)
     if (p.side === "top") return m + root.paddleThickness
@@ -338,7 +340,7 @@ Item {
       // The car stands on its tail; rotation turns it about its centre. It
       // sits against the edge margin, and the ball's line (paddleDepth)
       // falls inside its box, on the car itself.
-      carPaddle.x = root.u * 3 + carPaddle.height / 2 - carPaddle.width / 2
+      carPaddle.x = root.edgeMargin + carPaddle.height / 2 - carPaddle.width / 2
       carPaddle.y = root.paddles[0].pos - carPaddle.height / 2
       tuxPaddle.x = paddleLine(root.paddles[1])
       tuxPaddle.y = root.paddles[1].pos - tuxPaddle.height / 2

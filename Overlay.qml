@@ -303,8 +303,13 @@ Item {
   property bool askingReplace: false
   readonly property string builtInToggle: Quickshell.env("HOME") + "/.local/state/omarchy/toggles/screensaver-off"
 
+  // A change reported while a look is under way gets a fresh look after it,
+  // so the answer is never older than the last change.
+  property bool builtInRecheck: false
+
   function refreshBuiltIn() {
-    if (!builtInProbe.running) builtInProbe.running = true
+    if (builtInProbe.running) root.builtInRecheck = true
+    else builtInProbe.running = true
   }
 
   function setBuiltInOff(off) {
@@ -343,6 +348,10 @@ Item {
     command: ["test", "-e", root.builtInToggle]
     onExited: function(code) {
       root.builtInOff = code === 0
+      if (root.builtInRecheck) {
+        root.builtInRecheck = false
+        Qt.callLater(root.refreshBuiltIn)
+      }
       if (!root.firstRunPending) return
       root.firstRunPending = false
       // Already switched off by the user: there is nothing to ask.
