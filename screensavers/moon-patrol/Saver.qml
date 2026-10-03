@@ -252,7 +252,11 @@ Item {
         }
       }
       // Take off so the jump's midpoint is over the middle of the obstacle.
-      if (c.h <= 0 && d <= (root.reach - root.carW - o.w) / 2 + o.error && d > -root.carW * 0.3) {
+      // A late misjudgement still jumps: the floor keeps the takeoff window
+      // at least one slowest frame (dt 0.05) wide. Without it a large
+      // negative error left a window a frame could skip, or none at all.
+      var takeoff = Math.max((root.reach - root.carW - o.w) / 2 + o.error, -root.carW * 0.3 + root.speed * 0.05)
+      if (c.h <= 0 && d <= takeoff && d > -root.carW * 0.3) {
         c.vh = root.jumpV
         c.h = 0.01
       }
@@ -398,9 +402,10 @@ Item {
     root.obstacles = root.obstacles.filter(function(o) { return o.x + o.w > root.dist - 100 * root.unit })
 
     // The clock is the quiet spell between flights, so it only runs while
-    // the sky is empty.
+    // the sky is empty, and waits while the car is down so a respawn is not
+    // met by a flight at once.
     var skyClear = root.ufos.length === 0 && !root.flyer
-    if (skyClear) root.ufoClock -= dt
+    if (skyClear && c.alive) root.ufoClock -= dt
     if (root.ufoClock <= 0 && skyClear && c.alive) {
       launchSky()
       root.ufoClock = root.frantic ? Util.rand(4, 9) : Util.rand(6, 14)
@@ -672,7 +677,10 @@ Item {
     nearRange.x = -((root.dist * 0.3) % root.width)
     groundLayer.x = -(root.dist % root.width)
 
-    var craters = slots(root.obstacles.filter(function(o) { return o.kind === "crater" }), root.maxCraters)
+    var craterList = [], rockList = []
+    for (var n = 0; n < root.obstacles.length; n++)
+      (root.obstacles[n].kind === "crater" ? craterList : rockList).push(root.obstacles[n])
+    var craters = slots(craterList, root.maxCraters)
     for (var i = 0; i < root.maxCraters; i++) {
       var ci = craterRepeater.itemAt(i)
       if (!ci) continue
@@ -680,7 +688,7 @@ Item {
       ci.visible = !!cr
       if (cr) { ci.cw = cr.w; ci.x = cr.x - root.dist }
     }
-    var rocks = slots(root.obstacles.filter(function(o) { return o.kind === "rock" }), root.maxRocks)
+    var rocks = slots(rockList, root.maxRocks)
     for (var r = 0; r < root.maxRocks; r++) {
       var ri = rockRepeater.itemAt(r)
       if (!ri) continue
