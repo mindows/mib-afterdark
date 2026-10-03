@@ -1,5 +1,4 @@
 import QtQuick
-import "Sprites.js" as Sprites
 import "Util.js" as Util
 
 // Runs one screensaver module: builds its `host`, loads its entry point,
@@ -17,6 +16,14 @@ Item {
 
   property var shown: null
   property string failure: ""
+
+  // Showing a screensaver that uses live data; while it also runs, the
+  // runtime keeps its feed going.
+  readonly property bool usesFeed: !!shown && shown.system === true && failure === ""
+  readonly property bool wantsFeed: running && usesFeed
+  onWantsFeedChanged: if (runtime) runtime.wantFeed(holder, wantsFeed)
+  onRuntimeChanged: if (runtime) runtime.wantFeed(holder, wantsFeed)
+  Component.onDestruction: if (runtime) runtime.wantFeed(holder, false)
 
   clip: true
 
@@ -39,7 +46,7 @@ Item {
       }
       return out
     }
-    system: holder.shown && holder.shown.system && holder.runtime && holder.runtime.liveData ? holder.runtime.feed : null
+    system: holder.usesFeed && holder.runtime && holder.runtime.liveData ? holder.runtime.feed : null
     uptime: holder.runtime ? holder.runtime.uptime : 0
     userName: holder.runtime ? holder.runtime.userName : ""
     hostName: holder.runtime ? holder.runtime.hostName : ""
@@ -106,14 +113,11 @@ Item {
   }
 
   // Now and then a quattro drives straight through whatever is showing.
-  PixelSprite {
+  Quattro {
     id: driveBy
     property real speed: 0
     visible: false
     z: 10
-    rows: Sprites.quattro
-    colors: Sprites.quattroPalette(Sprites.liveries[0])
-    mirror: true
     pixel: Math.max(2, holder.height / 150)
     y: holder.height - height - holder.height * 0.03
 

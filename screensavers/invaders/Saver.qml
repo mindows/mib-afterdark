@@ -22,6 +22,8 @@ Item {
   readonly property int cols: 10
   readonly property real groundY: height - 70 * unit
   readonly property real shipY: groundY - 8 * px - 10 * unit
+  readonly property real shotSpeed: 720 * unit
+  readonly property real marchStep: 12 * unit
 
   readonly property var kindArt: ({ bug: Sprites.enemyBug, dependency: Sprites.enemyDependency, package: Sprites.enemyPackage })
   readonly property var kindColors: ({
@@ -44,11 +46,12 @@ Item {
   property int animFrame: 0
   property var cascade: []
 
-  property var ship: ({ x: 0, alive: true, respawn: 0, cooldown: 0, sudo: 0 })
+  property var ship: freshShip(0)
   property var shots: []
   property var bombs: []
   property var sparks: []
   property var bonusCars: []
+  property int carSerial: 0
   property var capsule: null
   property var boss: null
   property real fireClock: 1
@@ -72,7 +75,16 @@ Item {
     return n
   }
 
+  // The defender, at `x`, with nothing in mind yet.
+  function freshShip(x) {
+    return { x: x, vx: 0, alive: true, respawn: 0, cooldown: 0, sudo: 0, decide: 0, targetKey: "", trackKey: "", trackX: 0, trackV: 0, aimError: 0, leadSkill: 1, pace: 1, wander: -1 }
+  }
+
   function nextWave() {
+    // Targets are named by column or "boss", names the next wave reuses, so
+    // the defender starts it with nothing in mind.
+    root.ship.targetKey = ""
+    root.ship.trackKey = ""
     root.waveIndex = (root.waveIndex + 1) % root.waveOrder.length
     if (root.waveIndex === 0) root.level++
     root.waveKind = root.waveOrder[root.waveIndex]
@@ -126,7 +138,7 @@ Item {
     root.lives = 3
     root.level = 0
     root.waveIndex = -1
-    root.ship = { x: root.width / 2, alive: true, respawn: 0, cooldown: 0, sudo: 0 }
+    root.ship = freshShip(root.width / 2)
     nextWave()
   }
 
@@ -163,97 +175,204 @@ Item {
     spark(s.x, root.shipY + 4 * root.px, "#ffffff", 40)
   }
 
+  // Whether the way from `from` to `to` (a spot already clear) passes
+  // under no bomb but the ones already over `from`.
+  function pathOpen(falling, from, to, reach) {
+    var a = Math.min(from, to), z = Math.max(from, to)
+    for (var i = 0; i < falling.length; i++) {
+      var x = falling[i].x
+      if (Math.abs(x - from) >= reach && x > a - reach && x < z + reach) return false
+    }
+    return true
+  }
+
+  // Whether `x` is out of reach of every bomb in `falling`.
+  function clearOf(falling, x, reach) {
+    for (var i = 0; i < falling.length; i++) if (Math.abs(falling[i].x - x) < reach) return false
+    return true
+  }
+
   // Everything that can hit the defender, as { x, y, vy }.
   function threats() {
     return root.bombs
   }
 
-  function think(dt) {
+  // The defender plays like a person rather than a turret: it settles on a
+  // target for a moment before choosing again (usually the nearest, not
+  // always), aims a little off and misjudges the march, drifts about now and
+  // then, and speeds up and slows down instead of snapping into place.
+  // Dodging stays a reflex.
+  function think(dt, m) {
     var s = root.ship
     var shipW = 13 * root.px
     var center = s.x
     var speed = root.width * (root.frantic ? 0.6 : 0.42)
 
-    // Dodge first: a bomb that will land on us soon.
-    var dodge = 0
+    // Dodge first: a bomb that will land on us soon. A bomb stays a threat
+    // until it has fallen past the bottom of the ship, not just its top.
+    var lo = shipW / 2 + 10 * root.unit, hi = root.width - shipW / 2 - 10 * root.unit
     var list = threats()
+    var falling = []
     for (var i = 0; i < list.length; i++) {
       var b = list[i]
-      var t = (root.shipY - b.y) / Math.max(1, b.vy)
-      if (t > 0 && t < 0.7 && Math.abs(b.x - center) < shipW * 0.9) dodge += b.x < center ? 1 : -1
+      var t = (root.shipY + 8 * root.px - b.y) / Math.max(1, b.vy)
+      if (t > 0 && t < 0.7) falling.push(b)
+    }
+    // Under a bomb, head for the nearest spot clear of all of them, so bombs
+    // on both sides (a boss volley) never cancel out into standing still,
+    // preferring one it can reach without passing under another. With no
+    // clear spot in reach, get away from the nearest bomb.
+    // A bomb hits within 6 art pixels of the ship's centre; keep a little
+    // more than that from it, not a whole ship's width.
+    var reach = 6 * root.px + 8 * root.unit
+    var dodge = 0
+    var escape = -1
+    if (!clearOf(falling, center, reach)) {
+      var escapeOpen = false, nearest = null
+      for (var g = 0; g < falling.length; g++) {
+        var bx = falling[g].x
+        if (!nearest || Math.abs(bx - center) < Math.abs(nearest.x - center)) nearest = falling[g]
+        for (var side = -1; side <= 1; side += 2) {
+          var x = bx + side * (reach + 4 * root.unit)
+          if (x < lo || x > hi || !clearOf(falling, x, reach)) continue
+          var open = pathOpen(falling, center, x, reach)
+          if (escape < 0 || (open && !escapeOpen) || (open === escapeOpen && Math.abs(x - center) < Math.abs(escape - center))) {
+            escape = x
+            escapeOpen = open
+          }
+        }
+      }
+      if (escape >= 0) dodge = escape < center ? -1 : 1
+      else dodge = nearest.x < center ? 1 : -1
     }
 
-    var targetX = center
-    var targetValid = false
+    // A fresh aim, pace and mood every so often.
+    s.decide -= dt
+    if (s.decide <= 0) {
+      s.decide = Util.rand(0.25, 0.7)
+      s.aimError = Util.rand(-22, 22) * root.unit
+      s.pace = Util.rand(0.55, 1)
+      s.wander = Util.chance(14) ? Util.rand(0.15, 0.85) * root.width : -1
+    }
+
+    // Where each possible target will be when a shot gets there, and how
+    // fast that point is moving.
+    var targets = []
     if (root.boss) {
-      targetX = root.boss.x + root.boss.vx * 0.3
-      targetValid = true
+      var bossFlight = (root.shipY - root.boss.y) / root.shotSpeed
+      targets.push({ key: "boss", x: root.boss.x + root.boss.vx * bossFlight, v: root.boss.vx })
     } else if (root.waveKind === "bonus") {
-      var best = 1e9
       for (var q = 0; q < root.bonusCars.length; q++) {
         var car = root.bonusCars[q]
-        var lead = (root.shipY - car.y) / (700 * root.unit)
-        var fx = car.x + car.w / 2 + car.vx * lead
-        if (fx < 0 || fx > root.width) continue
-        if (Math.abs(fx - center) < best) { best = Math.abs(fx - center); targetX = fx; targetValid = true }
+        var fx = car.x + car.w / 2 + car.vx * (root.shipY - car.y) / root.shotSpeed
+        if (fx > 0 && fx < root.width) targets.push({ key: car.key, x: fx, v: car.vx })
       }
-    } else {
-      // The column whose lowest enemy is closest.
+    } else if (m) {
+      // The lowest enemy of each column.
       var lowest = {}
       for (var e = 0; e < root.enemies.length; e++) {
         var en = root.enemies[e]
         if (en.alive && (!lowest[en.col] || lowest[en.col].row < en.row)) lowest[en.col] = en
       }
-      var bestD = 1e9
-      for (var c in lowest) {
-        var ex = enemyX(lowest[c]) + 5.5 * root.px
-        if (Math.abs(ex - center) < bestD) { bestD = Math.abs(ex - center); targetX = ex; targetValid = true }
-      }
+      var marchV = root.formDir * root.marchStep / m.interval
+      for (var c in lowest)
+        targets.push({ key: "col:" + c, x: enemyX(lowest[c]) + 5.5 * root.px, lead: marchLead(root.shipY - enemyY(lowest[c]), m), v: marchV })
     }
+    // Keep after the chosen target until it is shot at or gone. A new one is
+    // usually the nearest, sometimes another one not far off.
+    for (var l = 0; l < targets.length; l++) if (targets[l].lead !== undefined) targets[l].x += targets[l].lead
+    targets.sort(function(a, z) { return Math.abs(a.x - center) - Math.abs(z.x - center) })
+    var target = null
+    for (var k = 0; k < targets.length; k++) if (targets[k].key === s.targetKey) target = targets[k]
+    if (!target && targets.length) {
+      var near = targets.filter(function(o) { return Math.abs(o.x - center) < root.width * 0.3 })
+      target = near.length > 1 && Math.random() < 0.2 ? Util.pick(near.slice(1)) : targets[0]
+      s.targetKey = target.key
+      // How well it will judge this one's march, settled once per target.
+      s.leadSkill = Util.rand(0.75, 1.15)
+    }
+    if (target && target.lead !== undefined) target.x += (s.leadSkill - 1) * target.lead
+    var wandering = s.wander >= 0 || !target
+    var goalX = s.wander >= 0 ? s.wander : (target ? target.x + s.aimError : center)
+    // How fast the aim point really moves (it stops short of the edge where
+    // the formation turns), judged from the last moments.
+    if (target && target.key === s.trackKey)
+      s.trackV += ((target.x - s.trackX) / Math.max(dt, 0.001) - s.trackV) * Math.min(1, dt / 0.25)
+    else if (target) {
+      s.trackKey = target.key
+      s.trackV = target.v
+    }
+    if (target) s.trackX = target.x
+    var goalV = wandering ? 0 : s.trackV
 
-    var move = 0
-    if (dodge !== 0) move = dodge > 0 ? speed : -speed
-    else if (targetValid) move = Util.clamp((targetX - center) * 8, -speed, speed)
-    s.x = Util.clamp(s.x + move * dt, shipW / 2 + 10 * root.unit, root.width - shipW / 2 - 10 * root.unit)
+    // Steer with some inertia, keeping up with a moving target.
+    // A dodge steers to its clear spot and stops there, so a narrow gap
+    // between bombs is not overshot into the next one.
+    var want = 0
+    if (escape >= 0) want = Util.clamp((escape - center) * 14, -speed, speed)
+    else if (dodge !== 0) want = dodge > 0 ? speed : -speed
+    else want = Util.clamp(goalV + (goalX - center) * 5, -speed * s.pace, speed * s.pace)
+    var accel = speed * (dodge !== 0 ? 14 : 5)
+    s.vx += Util.clamp(want - s.vx, -accel * dt, accel * dt)
+    // Wait beside a falling bomb rather than slide back under it.
+    if (dodge === 0 && !clearOf(falling, center + s.vx * dt, reach)) s.vx = 0
+    s.x = Util.clamp(s.x + s.vx * dt, lo, hi)
+    if (s.x === lo || s.x === hi) s.vx = 0
 
     s.cooldown -= dt
     var maxShots = s.sudo > 0 ? 9 : 2
-    if (targetValid && dodge === 0 && Math.abs(targetX - s.x) < 10 * root.unit && s.cooldown <= 0 && root.shots.length < maxShots) {
+    if (!wandering && dodge === 0 && Math.abs(goalX - s.x) < 10 * root.unit && s.cooldown <= 0 && root.shots.length < maxShots) {
       var y = root.shipY
       root.shots.push({ x: s.x, y: y, vx: 0 })
       if (s.sudo > 0) {
         root.shots.push({ x: s.x, y: y, vx: -160 * root.unit })
         root.shots.push({ x: s.x, y: y, vx: 160 * root.unit })
       }
-      s.cooldown = s.sudo > 0 ? 0.18 : 0.32
+      s.cooldown = s.sudo > 0 ? 0.18 : Util.rand(0.28, 0.55)
+      if (Math.random() < 0.3) s.targetKey = ""
     }
   }
 
-  function stepFormation(dt) {
-    var alive = aliveEnemies()
-    if (alive === 0) return
-    // Fewer enemies, faster march: the classic panic.
-    var interval = Math.max(0.05, 0.62 * alive / (root.rows * root.cols)) * (root.frantic ? 0.6 : 1) / (1 + root.level * 0.15)
-    root.stepClock += dt
-    if (root.stepClock < interval) return
-    root.stepClock = 0
-    root.animFrame = 1 - root.animFrame
-    var minX = 1e9, maxX = -1e9, maxY = 0
+  // The formation's march as it stands, from one look at the enemies: how
+  // many are left, the seconds between steps (fewer enemies, faster march:
+  // the classic panic), how many steps it can take before it reaches the
+  // edge and turns, and how low it has come. Worked out once a frame.
+  function march() {
+    var alive = 0, minX = 1e9, maxX = -1e9, maxY = 0
     for (var i = 0; i < root.enemies.length; i++) {
       var e = root.enemies[i]
       if (!e.alive) continue
+      alive++
       minX = Math.min(minX, enemyX(e))
       maxX = Math.max(maxX, enemyX(e) + 11 * root.px)
       maxY = Math.max(maxY, enemyY(e) + 8 * root.px)
     }
-    var stepX = 12 * root.unit * root.formDir
-    if (maxX + stepX > root.width - 20 * root.unit || minX + stepX < 20 * root.unit) {
+    var room = root.formDir > 0 ? root.width - 20 * root.unit - maxX : minX - 20 * root.unit
+    var interval = Math.max(0.05, 0.62 * alive / (root.rows * root.cols)) * (root.frantic ? 0.6 : 1) / (1 + root.level * 0.15)
+    return { alive: alive, interval: interval, stepsLeft: Math.max(0, Math.floor(room / root.marchStep)), maxY: maxY }
+  }
+
+  // How far the formation will have marched sideways by the time a shot
+  // fired now climbs `distance`, stopping at the edge where it turns.
+  function marchLead(distance, m) {
+    var steps = Math.floor((root.stepClock + distance / root.shotSpeed) / m.interval)
+    if (steps <= 0) return 0
+    return root.formDir * root.marchStep * Math.min(steps, m.stepsLeft)
+  }
+
+  function stepFormation(dt, m) {
+    if (m.alive === 0) return
+    root.stepClock += dt
+    if (root.stepClock < m.interval) return
+    root.stepClock = 0
+    root.animFrame = 1 - root.animFrame
+    if (m.stepsLeft < 1) {
       root.formY += root.cellH * 0.4
       root.formDir = -root.formDir
     } else {
-      root.formX += stepX
+      root.formX += root.marchStep * root.formDir
     }
-    if (maxY >= root.shipY) {
+    if (m.maxY >= root.shipY) {
       // They landed.
       showBanner("SYSTEM COMPROMISED", 3)
       root.lives = 0
@@ -272,7 +391,9 @@ Item {
     var s = root.ship
     if (s.sudo > 0) s.sudo -= dt
 
-    if (s.alive) think(dt)
+    var formation = root.waveKind === "swarm" || root.waveKind === "dependency"
+    var marching = formation ? march() : null
+    if (s.alive) think(dt, marching)
     else {
       s.respawn -= dt
       if (s.respawn <= 0) {
@@ -281,13 +402,13 @@ Item {
           newGame()
           return
         }
-        s.alive = true
-        s.x = root.width / 2
+        root.ship = freshShip(root.width / 2)
+        s = root.ship
         root.bombs = []
       }
     }
 
-    if (root.waveKind === "swarm" || root.waveKind === "dependency") stepFormation(dt)
+    if (formation) stepFormation(dt, marching)
 
     // Cascading dependency failures.
     var pending = []
@@ -319,14 +440,14 @@ Item {
     if (root.boss) {
       var bossItem = root.boss
       bossItem.x += bossItem.vx * dt
-      var half = bossW() / 2
+      var half = bossW(bossItem.kind) / 2
       if (bossItem.x < half + 20 * root.unit || bossItem.x > root.width - half - 20 * root.unit) bossItem.vx = -bossItem.vx
       bossItem.x = Util.clamp(bossItem.x, half + 20 * root.unit, root.width - half - 20 * root.unit)
       bossItem.hurt = Math.max(0, bossItem.hurt - dt)
       bossItem.fire -= dt
       if (bossItem.fire <= 0 && s.alive) {
         for (var k = -2; k <= 2; k++)
-          root.bombs.push({ x: bossItem.x + k * 30 * root.unit, y: bossItem.y + bossH() / 2, vy: (260 + Math.abs(k) * 30) * root.unit })
+          root.bombs.push({ x: bossItem.x + k * 30 * root.unit, y: bossItem.y + bossH(bossItem.kind) / 2, vy: (260 + Math.abs(k) * 30) * root.unit })
         bossItem.fire = Util.rand(1.2, 2.2)
       }
     }
@@ -336,8 +457,8 @@ Item {
       root.bonusClock -= dt
       if (root.bonusClock > 2 && root.bonusCars.length < 5 && Util.chance(40)) {
         var left = Math.random() < 0.5
-        var cw = 36 * root.px * 0.7
-        root.bonusCars.push({ x: left ? -cw : root.width, y: Util.rand(0.12, 0.45) * root.height, vx: (left ? 1 : -1) * Util.rand(220, 380) * root.unit, w: cw, left: !left, hit: false })
+        var cw = Sprites.quattroColumns * root.px * 0.7
+        root.bonusCars.push({ key: "car:" + (++root.carSerial), x: left ? -cw : root.width, y: Util.rand(0.12, 0.45) * root.height, vx: (left ? 1 : -1) * Util.rand(220, 380) * root.unit, w: cw, left: !left, hit: false })
       }
       var keptCars = []
       for (var q = 0; q < root.bonusCars.length; q++) {
@@ -353,7 +474,7 @@ Item {
     var keptShots = []
     for (var i = 0; i < root.shots.length; i++) {
       var shot = root.shots[i]
-      shot.y -= 720 * root.unit * dt
+      shot.y -= root.shotSpeed * dt
       shot.x += shot.vx * dt
       var spent = shot.y < 0
       for (var j = 0; !spent && j < root.enemies.length; j++) {
@@ -365,7 +486,7 @@ Item {
           spent = true
         }
       }
-      if (!spent && root.boss && Math.abs(shot.x - root.boss.x) < bossW() / 2 && Math.abs(shot.y - root.boss.y) < bossH() / 2) {
+      if (!spent && root.boss && Math.abs(shot.x - root.boss.x) < bossW(root.boss.kind) / 2 && Math.abs(shot.y - root.boss.y) < bossH(root.boss.kind) / 2) {
         root.boss.hp--
         root.boss.hurt = 0.08
         spent = true
@@ -378,7 +499,7 @@ Item {
       }
       for (var b = 0; !spent && b < root.bonusCars.length; b++) {
         var bc = root.bonusCars[b]
-        if (!bc.hit && shot.x >= bc.x && shot.x <= bc.x + bc.w && shot.y >= bc.y && shot.y <= bc.y + 13 * root.px * 0.7) {
+        if (!bc.hit && shot.x >= bc.x && shot.x <= bc.x + bc.w && shot.y >= bc.y && shot.y <= bc.y + Sprites.quattroRows * root.px * 0.7) {
           bc.hit = true
           root.score += 500
           spark(bc.x + bc.w / 2, bc.y, "#f2c230", 30)
@@ -431,10 +552,31 @@ Item {
     sync()
   }
 
-  function bossW() { return root.boss && root.boss.kind === "tux" ? 12 * root.px * 3 : 180 * root.unit }
-  function bossH() { return root.boss && root.boss.kind === "tux" ? 12 * root.px * 3 : 150 * root.unit }
+  // The boss's size, for drawing it and for hitting it alike.
+  function bossW(kind) { return kind === "tux" ? 12 * root.px * 3 : 180 * root.unit }
+  function bossH(kind) { return kind === "tux" ? 12 * root.px * 3 : 150 * root.unit }
 
+  // The ship, boss and capsule change in place, which no binding sees, so
+  // they are placed here every frame like everything else.
   function sync() {
+    var s = root.ship
+    shipItem.visible = s.alive
+    shipItem.x = s.x - shipItem.width / 2
+    shipItem.sudo = s.sudo > 0
+    var boss = root.boss
+    bossItem.visible = !!boss
+    if (boss) {
+      bossItem.kind = boss.kind
+      bossItem.x = boss.x - bossItem.width / 2
+      bossItem.y = boss.y - bossItem.height / 2
+      bossItem.opacity = boss.hurt > 0 ? 0.55 : 1
+      bossItem.health = boss.hp / boss.maxHp
+    }
+    capsuleItem.visible = !!root.capsule
+    if (root.capsule) {
+      capsuleItem.x = root.capsule.x
+      capsuleItem.y = root.capsule.y
+    }
     for (var i = 0; i < root.rows * root.cols; i++) {
       var item = enemyRepeater.itemAt(i)
       if (!item) continue
@@ -451,10 +593,10 @@ Item {
       links.drawnKey = linkKey
       links.requestPaint()
     }
-    for (var s = 0; s < 12; s++) {
-      var shotItem = shotRepeater.itemAt(s)
+    for (var n = 0; n < 12; n++) {
+      var shotItem = shotRepeater.itemAt(n)
       if (!shotItem) continue
-      var shot = root.shots[s]
+      var shot = root.shots[n]
       shotItem.visible = !!shot
       if (shot) { shotItem.x = shot.x - shotItem.width / 2; shotItem.y = shot.y }
     }
@@ -552,15 +694,14 @@ Item {
   // Boss: the kernel, drawn as a chip; or, rarely, a giant penguin.
   Item {
     id: bossItem
-    visible: !!root.boss
-    width: root.bossW()
-    height: root.bossH()
-    x: root.boss ? root.boss.x - width / 2 : 0
-    y: root.boss ? root.boss.y - height / 2 : 0
-    opacity: root.boss && root.boss.hurt > 0 ? 0.55 : 1
+    property string kind: "kernel"
+    property real health: 1
+    visible: false
+    width: root.bossW(kind)
+    height: root.bossH(kind)
 
     Rectangle {
-      visible: !!root.boss && root.boss.kind === "kernel"
+      visible: bossItem.kind === "kernel"
       anchors.centerIn: parent
       width: parent.width * 0.78
       height: parent.height * 0.78
@@ -605,7 +746,7 @@ Item {
       }
     }
     PixelSprite {
-      visible: !!root.boss && root.boss.kind === "tux"
+      visible: bossItem.kind === "tux"
       rows: Sprites.tux
       colors: Sprites.tuxPalette
       pixel: root.px * 3
@@ -616,7 +757,7 @@ Item {
       height: 6 * root.unit
       color: "#30333a"
       Rectangle {
-        width: parent.width * (root.boss ? root.boss.hp / root.boss.maxHp : 0)
+        width: parent.width * bossItem.health
         height: parent.height
         color: "#e8433a"
       }
@@ -626,36 +767,20 @@ Item {
   Repeater {
     id: carRepeater
     model: 5
-    Item {
-      property bool facingLeft: true
+    Quattro {
       visible: false
-      width: body.width
-      height: body.height
-      PixelSprite {
-        rows: Sprites.wingMid
-        colors: Sprites.wingPalette
-        pixel: root.px * 0.7
-        mirror: parent.facingLeft
-        x: parent.facingLeft ? (Sprites.width(Sprites.quattro) - 1 - Sprites.roofJoint) * pixel : (Sprites.roofJoint - 19) * pixel
-        y: -9 * pixel
-      }
-      PixelSprite {
-        id: body
-        rows: Sprites.quattro
-        colors: Sprites.quattroPalette(Sprites.liveries[3])
-        pixel: root.px * 0.7
-        mirror: parent.facingLeft
-      }
+      livery: 3
+      pixel: root.px * 0.7
     }
   }
 
   PixelSprite {
     id: shipItem
-    visible: root.ship.alive
+    property bool sudo: false
+    visible: false
     rows: Sprites.ship
-    colors: ({ K: "#0b0b0d", W: root.ship.sudo > 0 ? "#f2c230" : "#e8e8e8", Y: "#e8433a" })
+    colors: ({ K: "#0b0b0d", W: sudo ? "#f2c230" : "#e8e8e8", Y: "#e8433a" })
     pixel: root.px
-    x: root.ship.x - width / 2
     y: root.shipY
   }
 
@@ -678,9 +803,8 @@ Item {
   }
 
   Rectangle {
-    visible: !!root.capsule
-    x: root.capsule ? root.capsule.x : 0
-    y: root.capsule ? root.capsule.y : 0
+    id: capsuleItem
+    visible: false
     width: capsuleText.width + 12 * root.unit
     height: capsuleText.height + 8 * root.unit
     radius: height / 2

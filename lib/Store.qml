@@ -7,7 +7,9 @@ import "Util.js" as Util
 //
 //   ~/.config/mib-afterdark/settings.json   choices the user makes
 //   ~/.local/state/mib-afterdark/state.json  what the screensavers remember
-//                                            (Pong's lifetime score, high scores)
+//                                            (Pong's lifetime score, high scores),
+//                                            and whether the first-run question
+//                                            about Omarchy's screensaver was answered
 //
 // Omarchy hands a summoned overlay no inline settings, so the plugin keeps
 // its own files, the same way MIB Vlog does. Both are validated on read, so
@@ -34,12 +36,11 @@ Item {
     favorites: [],
     liveData: false,
     sameOnAllScreens: true,
-    replaceBuiltIn: true,
     options: {}
   })
 
   property var settings: normalize({})
-  property var state: ({ modules: {}, tookOver: false })
+  property var state: ({ modules: {}, askedReplace: false })
 
   readonly property bool ready: settingsResolved && stateResolved && dirsReady
   property bool settingsResolved: false
@@ -68,7 +69,6 @@ Item {
     out.favorites = idList(s.favorites)
     out.liveData = typeof s.liveData === "boolean" ? s.liveData : d.liveData
     out.sameOnAllScreens = typeof s.sameOnAllScreens === "boolean" ? s.sameOnAllScreens : d.sameOnAllScreens
-    out.replaceBuiltIn = typeof s.replaceBuiltIn === "boolean" ? s.replaceBuiltIn : d.replaceBuiltIn
     out.options = {}
     if (s.options && typeof s.options === "object" && !Array.isArray(s.options)) {
       for (var moduleId in s.options) {
@@ -99,7 +99,9 @@ Item {
 
   function normalizeState(raw) {
     var s = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {}
-    var out = { modules: {}, tookOver: s.tookOver === true }
+    // Earlier builds recorded the switch either way as tookOver: true when
+    // they switched Omarchy's off, false when the user switched it back.
+    var out = { modules: {}, askedReplace: s.askedReplace === true || typeof s.tookOver === "boolean" }
     if (s.modules && typeof s.modules === "object") {
       for (var id in s.modules) {
         if (!/^[a-z0-9][a-z0-9-]{0,40}$/.test(id)) continue
@@ -180,8 +182,8 @@ Item {
     stateSaveTimer.restart()
   }
 
-  function setTookOver(value) {
-    store.state.tookOver = !!value
+  function setAskedReplace() {
+    store.state.askedReplace = true
     saveState()
   }
 

@@ -63,17 +63,20 @@ Item {
     userDir: store.dirsReady ? store.userModulesDir : ""
   }
 
-  SystemFeed {
-    id: feed
-    active: root.saverActive && !root.paused && store.settings.liveData && root.anyShownNeedsSystem()
+  // Live data runs only while some screensaver that uses it is running on
+  // screen, full screen or in the control panel's preview. Each SaverHost
+  // says whether it wants it; saying so twice changes nothing.
+  property var feedHosts: []
+
+  function wantFeed(host, on) {
+    var next = root.feedHosts.filter(function(h) { return h !== host })
+    if (on) next.push(host)
+    if (next.length !== root.feedHosts.length) root.feedHosts = next
   }
 
-  function anyShownNeedsSystem() {
-    for (var name in root.screenModules) {
-      var m = catalog.module(root.screenModules[name])
-      if (m && m.system) return true
-    }
-    return false
+  SystemFeed {
+    id: feed
+    active: store.settings.liveData && root.feedHosts.length > 0
   }
 
   // ------------------------------------------------------------ choosing
@@ -291,50 +294,73 @@ Item {
   // ------------------------------------------------------------ built-in
 
   // Omarchy's terminal screensaver would start at the same moment; its own
-  // "screensaver-off" toggle keeps it out of the way. After Dark switches it
-  // off once when first enabled, and back on if "Replace" is turned off.
+  // "screensaver-off" toggle keeps it out of the way. Nothing of Omarchy's is
+  // touched until the user says so: the first time After Dark loads, the
+  // control panel opens and asks. "Replace" switches the toggle on, and
+  // turning it off again switches it back.
   property bool builtInOff: false
+  property bool firstRunPending: false
+  property bool askingReplace: false
   readonly property string builtInToggle: Quickshell.env("HOME") + "/.local/state/omarchy/toggles/screensaver-off"
 
   function refreshBuiltIn() {
-    if (!builtInProbe.running) builtInProbe.running = true
+    builtInFile.reload()
   }
 
   function setBuiltInOff(off) {
     Quickshell.execDetached(["omarchy-toggle", "screensaver-off", off ? "on" : "off"])
     root.builtInOff = off
-    refreshTimer.restart()
-  }
-
-  function setReplaceBuiltIn(on) {
-    store.set("replaceBuiltIn", on)
-    setBuiltInOff(on)
-    store.setTookOver(on)
+    // Look again shortly, in case the toggle did not change after all.
+    builtInRecheck.restart()
   }
 
   Timer {
-    id: refreshTimer
-    interval: 500
+    id: builtInRecheck
+    interval: 800
     onTriggered: root.refreshBuiltIn()
   }
 
-  Process {
-    id: builtInProbe
-    command: ["test", "-e", root.builtInToggle]
-    onExited: function(code) { root.builtInOff = code === 0 }
+  // The first-run question. Closing the panel without answering counts as
+  // "not now"; the switch stays in the panel's footer either way.
+  function answerReplace(replace) {
+    if (!root.askingReplace) return
+    root.askingReplace = false
+    store.setAskedReplace()
+    if (replace) root.setBuiltInOff(true)
+  }
+
+  // The panel's switch shows Omarchy's own toggle, so it always tells the
+  // truth, however the toggle came to be set. The toggle is a file that
+  // either exists or not; it is watched, so a change made elsewhere shows.
+  FileView {
+    id: builtInFile
+    path: root.builtInToggle
+    watchChanges: true
+    printErrors: false
+    onFileChanged: reload()
+    onLoaded: root.builtInSeen(true)
+    onLoadFailed: root.builtInSeen(false)
+  }
+
+  function builtInSeen(off) {
+    root.builtInOff = off
+    if (!root.firstRunPending) return
+    root.firstRunPending = false
+    // Already switched off by the user: there is nothing to ask.
+    if (off) {
+      store.setAskedReplace()
+      return
+    }
+    root.askingReplace = true
+    root.opened = true
   }
 
   Connections {
     target: store
     function onReadyChanged() {
       if (!store.ready) return
+      root.firstRunPending = !store.state.askedReplace
       root.refreshBuiltIn()
-      if (store.settings.replaceBuiltIn && !store.state.tookOver) {
-        root.setBuiltInOff(true)
-        store.setTookOver(true)
-        Quickshell.execDetached(["omarchy-notification-send", "-g", "󰍹", "After Dark is your screensaver now",
-          "Omarchy's built-in screensaver is switched off. Open After Dark from the launcher to change that."])
-      }
     }
   }
 
@@ -388,6 +414,7 @@ Item {
   }
 
   function close() {
+    root.answerReplace(false)
     root.opened = false
   }
 

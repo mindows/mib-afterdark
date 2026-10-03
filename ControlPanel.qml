@@ -24,6 +24,7 @@ PanelWindow {
   readonly property var catalog: runtime ? runtime.catalog : null
   readonly property var settings: store ? store.settings : ({})
   readonly property var modules: catalog ? catalog.modules : []
+  readonly property bool askingReplace: !!runtime && runtime.askingReplace
   property int selectedIndex: 0
   readonly property var selected: modules.length ? modules[Math.min(selectedIndex, modules.length - 1)] : null
 
@@ -187,6 +188,12 @@ PanelWindow {
     focus: true
     Keys.onPressed: function(event) {
       var m = panel.selected
+      if (panel.askingReplace) {
+        if (event.key === Qt.Key_Escape) panel.closeRequested()
+        else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) panel.runtime.answerReplace(true)
+        event.accepted = true
+        return
+      }
       if (event.key === Qt.Key_Escape) panel.closeRequested()
       else if (event.key === Qt.Key_Down || event.key === Qt.Key_J) panel.move(1)
       else if (event.key === Qt.Key_Up || event.key === Qt.Key_K) panel.move(-1)
@@ -320,7 +327,7 @@ PanelWindow {
 
           Label {
             anchors { right: star.left; rightMargin: 10; verticalCenter: parent.verticalCenter }
-            width: 150
+            width: 190
             horizontalAlignment: Text.AlignRight
             text: moduleRow.modelData.categories.join(" · ")
             color: panel.muted
@@ -409,7 +416,9 @@ PanelWindow {
           module: panel.shown ? panel.selected : null
           runtime: panel.runtime
           preview: true
-          running: panel.shown
+          // Not behind the first-run question, nor while the screensaver
+          // itself runs (or sleeps under the lock screen) over the panel.
+          running: panel.shown && !panel.askingReplace && !(panel.runtime && panel.runtime.saverActive)
         }
 
         MouseArea {
@@ -554,8 +563,8 @@ PanelWindow {
           }
           Toggle {
             text: "Replace Omarchy's screensaver"
-            checked: panel.settings.replaceBuiltIn === true
-            onToggled: panel.runtime.setReplaceBuiltIn(!checked)
+            checked: !!panel.runtime && panel.runtime.builtInOff
+            onToggled: panel.runtime.setBuiltInOff(!checked)
           }
           Label {
             anchors.verticalCenter: parent.verticalCenter
@@ -563,6 +572,59 @@ PanelWindow {
             text: "both will run"
             color: Color.urgent
             font.pixelSize: 12
+          }
+        }
+      }
+    }
+
+    // First run: ask before touching Omarchy's own screensaver.
+    Rectangle {
+      anchors.fill: parent
+      visible: panel.askingReplace
+      radius: card.radius
+      color: Qt.rgba(panel.bg.r, panel.bg.g, panel.bg.b, 0.94)
+
+      MouseArea { anchors.fill: parent }
+
+      Column {
+        anchors.centerIn: parent
+        width: 600
+        spacing: 22
+
+        PixelText {
+          anchors.horizontalCenter: parent.horizontalCenter
+          text: "AFTER DARK"
+          color: panel.accent
+          pixel: 6
+        }
+        Label {
+          width: parent.width
+          horizontalAlignment: Text.AlignHCenter
+          text: "Make After Dark your screensaver?"
+          font.pixelSize: 20
+          font.bold: true
+        }
+        Label {
+          width: parent.width
+          horizontalAlignment: Text.AlignHCenter
+          wrapMode: Text.WordWrap
+          elide: Text.ElideNone
+          color: panel.muted
+          text: "Omarchy's own screensaver is on, so both would start when the machine goes idle. "
+            + "After Dark can switch Omarchy's off with Omarchy's own toggle. "
+            + "You can change this any time with Replace Omarchy's screensaver at the bottom of this panel."
+        }
+        Row {
+          anchors.horizontalCenter: parent.horizontalCenter
+          spacing: 10
+          Button {
+            text: "Replace Omarchy's screensaver"
+            primary: true
+            onClicked: panel.runtime.answerReplace(true)
+          }
+          Button {
+            text: "Not now"
+            onClicked: panel.runtime.answerReplace(false)
           }
         }
       }

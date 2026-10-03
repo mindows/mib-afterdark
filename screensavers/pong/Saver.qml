@@ -22,6 +22,8 @@ Item {
 
   // Layout unit: everything scales with the smaller screen side.
   readonly property real u: Math.max(2, Math.min(width, height) / 90)
+  // The gap between a screen edge and the paddle against it.
+  readonly property real edgeMargin: u * 3
   readonly property real ballSize: u * 1.6
   readonly property real paddleThickness: u * 1.4
   readonly property real paddleLength: (variant === "tiny-paddle" ? 3.5 : (variant === "quattro-vs-tux" ? 13 : 12)) * u
@@ -150,14 +152,16 @@ Item {
   // penguin, both deeper than a bar.
   function paddleDepth(p) {
     if (root.variant === "quattro-vs-tux") {
-      if (p.side === "left") return carPaddle.height
+      // The car is drawn at three-quarters, so its box has empty corners;
+      // the ball meets the car, not the box.
+      if (p.side === "left") return carPaddle.height * 0.85
       if (p.side === "right") return tuxPaddle.width
     }
     return root.paddleThickness
   }
 
   function paddleLine(p) {
-    var m = root.u * 3
+    var m = root.edgeMargin
     if (p.side === "left") return m + paddleDepth(p)
     if (p.side === "right") return root.width - m - paddleDepth(p)
     if (p.side === "top") return m + root.paddleThickness
@@ -333,8 +337,10 @@ Item {
       }
     }
     if (root.variant === "quattro-vs-tux" && root.paddles.length >= 2) {
-      // The car stands on its tail; rotation turns it about its centre.
-      carPaddle.x = paddleLine(root.paddles[0]) - carPaddle.height / 2 - carPaddle.width / 2
+      // The car stands on its tail; rotation turns it about its centre. It
+      // sits against the edge margin, and the ball's line (paddleDepth)
+      // falls inside its box, on the car itself.
+      carPaddle.x = root.edgeMargin + carPaddle.height / 2 - carPaddle.width / 2
       carPaddle.y = root.paddles[0].pos - carPaddle.height / 2
       tuxPaddle.x = paddleLine(root.paddles[1])
       tuxPaddle.y = root.paddles[1].pos - tuxPaddle.height / 2
@@ -362,10 +368,10 @@ Item {
     id: leftBoard
     anchors { right: parent.horizontalCenter; rightMargin: root.u * 8; top: parent.top; topMargin: root.u * 7 }
     spacing: root.u * 2
-    PixelSprite {
+    Quattro {
       anchors.verticalCenter: parent.verticalCenter
-      rows: Sprites.quattro
-      colors: Sprites.quattroPalette(Sprites.liveries[1])
+      facingLeft: false
+      livery: 1
       pixel: root.u * 0.28
     }
     PixelText { text: "QUATTRO"; color: root.ink; pixel: root.u * 0.5; anchors.verticalCenter: parent.verticalCenter }
@@ -410,12 +416,11 @@ Item {
     Rectangle { visible: false; color: root.ink }
   }
 
-  PixelSprite {
+  Quattro {
     id: carPaddle
     visible: root.variant === "quattro-vs-tux"
-    rows: Sprites.quattro
-    colors: Sprites.quattroPalette(Sprites.liveries[0])
-    pixel: root.paddleLength / Sprites.width(Sprites.quattro)
+    facingLeft: false
+    pixel: root.paddleLength / Sprites.quattroColumns
     rotation: -90
   }
   PixelSprite {
