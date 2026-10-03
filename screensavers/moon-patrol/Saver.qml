@@ -120,6 +120,22 @@ Item {
       if (doomed) explode(b.x, b.y, 10, 120, "#ffd27a", true)
       return !doomed
     })
+    // The quattro is longer at the nose, so it can appear on top of a boulder
+    // the buggy was about to jump. The dust takes those out too.
+    for (var i = 0; root.car.alive && i < root.obstacles.length; i++) {
+      var o = root.obstacles[i]
+      if (hitsRock(o)) {
+        o.hp = 0
+        explode(o.x - root.dist + o.w / 2, root.groundY - 3 * root.px, 24, 220, root.scene.rock, false)
+      }
+    }
+  }
+
+  // A standing boulder the vehicle, at its height, is touching.
+  function hitsRock(o) {
+    var rear = root.dist + root.buggyX
+    return o.kind === "rock" && o.hp > 0 && root.car.h < (o.big ? 6 : 5) * root.px
+      && o.x < rear + root.carW - root.px && o.x + o.w > rear + root.px
   }
 
   function freshCar() {
@@ -245,7 +261,7 @@ Item {
       if (o.kind === "rock" && d > 0 && d < root.width * 0.45) {
         // Some boulders it would rather jump.
         if (o.shoot === undefined) o.shoot = !Util.chance(4)
-        if (o.shoot && c.fwdCool <= 0 && c.h <= 0) {
+        if (o.shoot && c.fwdCool <= 0 && c.h <= 0 && root.shots.length < root.maxShots) {
           var g = frontGun()
           root.shots.push({ up: false, x: g.x, y: g.y, travelled: 0 })
           c.fwdCool = 0.3
@@ -277,7 +293,7 @@ Item {
     // The same window a shot needs to hit a bomb.
     for (var k = 0; k < root.bombs.length && !aim; k++)
       aim = Math.abs(root.bombs[k].x - gun.x) < 3 * root.px && root.bombs[k].y < gun.y - 60 * root.unit
-    if (aim) {
+    if (aim && root.shots.length < root.maxShots) {
       root.shots.push({ up: true, x: gun.x, y: gun.y, travelled: 0 })
       c.upCool = 0.22
     }
@@ -356,8 +372,7 @@ Item {
       for (var i = 0; i < root.obstacles.length; i++) {
         var o = root.obstacles[i]
         if (o.kind === "crater" && c.h <= 0 && mid > o.x + 2 * root.px && mid < o.x + o.w - 2 * root.px) { crash(); break }
-        if (o.kind === "rock" && o.hp > 0 && c.h < (o.big ? 6 : 5) * root.px
-            && o.x < rear + root.carW - root.px && o.x + o.w > rear + root.px) { crash(); break }
+        if (hitsRock(o)) { crash(); break }
       }
     } else {
       c.respawn -= dt
@@ -432,7 +447,9 @@ Item {
         if (overCar && Math.abs(dropX - roofGun().x) >= 3 * root.px && !Util.chance(6)) {
           ufo.bomb = (root.carW + 2 * root.px) / Math.max(1, Math.abs(ufo.vx))
         } else {
-          root.bombs.push({ x: dropX, y: ufo.y + 6 * root.px, vy: 120 * root.unit })
+          // Each bomb needs a pooled item; one without would be invisible but lethal.
+          if (root.bombs.length < root.maxBombs)
+            root.bombs.push({ x: dropX, y: ufo.y + 6 * root.px, vy: 120 * root.unit })
           ufo.bomb = root.frantic ? Util.rand(0.8, 2) : Util.rand(1.2, 3)
         }
       }

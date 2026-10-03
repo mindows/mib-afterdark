@@ -129,6 +129,10 @@ Item {
   function enemyX(e) { return root.formX + e.col * root.cellW + (root.cellW - 11 * root.px) / 2 }
   function enemyY(e) { return root.formY + e.row * root.cellH }
 
+  // A run dismissed before GAME OVER keeps its high score too. SaverHost
+  // unloads a module before switching its host to the next one.
+  Component.onDestruction: if (root.score > root.hiScore && root.host) root.host.set("hiscore", root.score)
+
   function newGame() {
     if (root.score > root.hiScore) {
       root.hiScore = root.score
