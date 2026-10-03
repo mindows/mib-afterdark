@@ -4,9 +4,10 @@
 
 First release.
 
-- Nine screensavers: Flying Quattros, Matrix Operator (operator console, code
-  rain, intrusion, trace), Omarchy Invaders, Pong Forever, Asteroids, Pipes,
-  Starfield, Plasma, and Terminal Aquarium.
+- Nine screensavers: Flying Quattros (a winged quattro in six liveries),
+  Matrix Operator (operator console, code rain, intrusion, trace), Omarchy
+  Invaders, Pong Forever, Asteroids, Pipes, Starfield, Plasma, and Terminal
+  Aquarium.
 - Starts on idle on every screen, following Omarchy's `idle.screensaver` or
   its own delay; respects stay-awake and never draws under the lock screen.
 - Asks on first run before replacing Omarchy's built-in screensaver; does it

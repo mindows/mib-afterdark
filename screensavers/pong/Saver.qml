@@ -362,10 +362,9 @@ Item {
     id: leftBoard
     anchors { right: parent.horizontalCenter; rightMargin: root.u * 8; top: parent.top; topMargin: root.u * 7 }
     spacing: root.u * 2
-    PixelSprite {
+    Quattro {
       anchors.verticalCenter: parent.verticalCenter
-      rows: Sprites.quattro
-      colors: Sprites.quattroPalette(Sprites.liveries[1])
+      livery: 1
       pixel: root.u * 0.28
     }
     PixelText { text: "QUATTRO"; color: root.ink; pixel: root.u * 0.5; anchors.verticalCenter: parent.verticalCenter }
@@ -410,12 +409,10 @@ Item {
     Rectangle { visible: false; color: root.ink }
   }
 
-  PixelSprite {
+  Quattro {
     id: carPaddle
     visible: root.variant === "quattro-vs-tux"
-    rows: Sprites.quattro
-    colors: Sprites.quattroPalette(Sprites.liveries[0])
-    pixel: root.paddleLength / Sprites.width(Sprites.quattro)
+    pixel: root.paddleLength / Sprites.quattroColumns
     rotation: -90
   }
   PixelSprite {

@@ -212,9 +212,11 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Credits
 
-All artwork is drawn from scratch for this plugin. The quattro is a generic
-boxy 1980s rally coupe without any maker's badge, and nothing here uses the
-original After Dark or Flying Toasters assets.
+The flying quattro (`lib/art/`, in six liveries) is original artwork by Min
+Kim. Audi, quattro and the four rings are trademarks of AUDI AG; this is a fan
+tribute, not affiliated with or endorsed by Audi. All other artwork is pixel
+art drawn from scratch for this plugin, and nothing here uses the original
+After Dark or Flying Toasters assets.
 
 ## License
 

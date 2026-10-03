@@ -1,5 +1,4 @@
 import QtQuick
-import "Sprites.js" as Sprites
 import "Util.js" as Util
 
 // Runs one screensaver module: builds its `host`, loads its entry point,
@@ -106,14 +105,11 @@ Item {
   }
 
   // Now and then a quattro drives straight through whatever is showing.
-  PixelSprite {
+  Quattro {
     id: driveBy
     property real speed: 0
     visible: false
     z: 10
-    rows: Sprites.quattro
-    colors: Sprites.quattroPalette(Sprites.liveries[0])
-    mirror: true
     pixel: Math.max(2, holder.height / 150)
     y: holder.height - height - holder.height * 0.03
 

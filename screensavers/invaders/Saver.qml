@@ -336,7 +336,7 @@ Item {
       root.bonusClock -= dt
       if (root.bonusClock > 2 && root.bonusCars.length < 5 && Util.chance(40)) {
         var left = Math.random() < 0.5
-        var cw = 36 * root.px * 0.7
+        var cw = Sprites.quattroColumns * root.px * 0.7
         root.bonusCars.push({ x: left ? -cw : root.width, y: Util.rand(0.12, 0.45) * root.height, vx: (left ? 1 : -1) * Util.rand(220, 380) * root.unit, w: cw, left: !left, hit: false })
       }
       var keptCars = []
@@ -378,7 +378,7 @@ Item {
       }
       for (var b = 0; !spent && b < root.bonusCars.length; b++) {
         var bc = root.bonusCars[b]
-        if (!bc.hit && shot.x >= bc.x && shot.x <= bc.x + bc.w && shot.y >= bc.y && shot.y <= bc.y + 13 * root.px * 0.7) {
+        if (!bc.hit && shot.x >= bc.x && shot.x <= bc.x + bc.w && shot.y >= bc.y && shot.y <= bc.y + Sprites.quattroRows * root.px * 0.7) {
           bc.hit = true
           root.score += 500
           spark(bc.x + bc.w / 2, bc.y, "#f2c230", 30)
@@ -626,26 +626,10 @@ Item {
   Repeater {
     id: carRepeater
     model: 5
-    Item {
-      property bool facingLeft: true
+    Quattro {
       visible: false
-      width: body.width
-      height: body.height
-      PixelSprite {
-        rows: Sprites.wingMid
-        colors: Sprites.wingPalette
-        pixel: root.px * 0.7
-        mirror: parent.facingLeft
-        x: parent.facingLeft ? (Sprites.width(Sprites.quattro) - 1 - Sprites.roofJoint) * pixel : (Sprites.roofJoint - 19) * pixel
-        y: -9 * pixel
-      }
-      PixelSprite {
-        id: body
-        rows: Sprites.quattro
-        colors: Sprites.quattroPalette(Sprites.liveries[3])
-        pixel: root.px * 0.7
-        mirror: parent.facingLeft
-      }
+      livery: 3
+      pixel: root.px * 0.7
     }
   }
 

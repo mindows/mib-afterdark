@@ -1,6 +1,5 @@
 import QtQuick
 import "../../lib"
-import "../../lib/Sprites.js" as Sprites
 import "../../lib/Util.js" as Util
 
 // Starfield: flight through an endless field of stars, drawn on the GPU
@@ -69,7 +68,7 @@ Item {
   }
 
   // Once in a long while a winged quattro comes the other way.
-  PixelSprite {
+  Quattro {
     id: quattro
     property bool flying: false
     property real t: 0
@@ -94,9 +93,6 @@ Item {
     }
 
     visible: false
-    rows: Sprites.quattro
-    colors: Sprites.quattroPalette(Sprites.liveries[0])
-    mirror: true
   }
 
   FrameAnimation {
