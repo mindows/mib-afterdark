@@ -7,7 +7,9 @@ import "Util.js" as Util
 //
 //   ~/.config/mib-afterdark/settings.json   choices the user makes
 //   ~/.local/state/mib-afterdark/state.json  what the screensavers remember
-//                                            (Pong's lifetime score, high scores)
+//                                            (Pong's lifetime score, high scores),
+//                                            and whether the first-run question
+//                                            about Omarchy's screensaver was answered
 //
 // Omarchy hands a summoned overlay no inline settings, so the plugin keeps
 // its own files, the same way MIB Vlog does. Both are validated on read, so
@@ -34,12 +36,12 @@ Item {
     favorites: [],
     liveData: false,
     sameOnAllScreens: true,
-    replaceBuiltIn: true,
+    replaceBuiltIn: false,
     options: {}
   })
 
   property var settings: normalize({})
-  property var state: ({ modules: {}, tookOver: false })
+  property var state: ({ modules: {}, askedReplace: false })
 
   readonly property bool ready: settingsResolved && stateResolved && dirsReady
   property bool settingsResolved: false
@@ -99,7 +101,8 @@ Item {
 
   function normalizeState(raw) {
     var s = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {}
-    var out = { modules: {}, tookOver: s.tookOver === true }
+    // Earlier builds switched without asking and recorded it as tookOver.
+    var out = { modules: {}, askedReplace: s.askedReplace === true || s.tookOver === true }
     if (s.modules && typeof s.modules === "object") {
       for (var id in s.modules) {
         if (!/^[a-z0-9][a-z0-9-]{0,40}$/.test(id)) continue
@@ -180,8 +183,8 @@ Item {
     stateSaveTimer.restart()
   }
 
-  function setTookOver(value) {
-    store.state.tookOver = !!value
+  function setAskedReplace() {
+    store.state.askedReplace = true
     saveState()
   }
 

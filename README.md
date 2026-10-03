@@ -13,7 +13,7 @@ actually doing. It should feel like the kind of software people used to make
 when computers were allowed to be fun.
 
 An Omarchy shell plugin. It runs inside `omarchy-shell`, draws on every screen
-when the machine goes idle, and replaces Omarchy's built-in terminal
+when the machine goes idle, and can take over from Omarchy's built-in terminal
 screensaver.
 
 ## The screensavers
@@ -52,10 +52,13 @@ Once it is enabled:
 
 - After Dark starts after Omarchy's own screensaver delay (`idle.screensaver`
   in `~/.config/omarchy/shell.json`), on every screen.
-- Omarchy's built-in terminal screensaver is switched off with Omarchy's own
-  toggle (`omarchy toggle screensaver`), once, and a notification says so.
-  Turn **Replace Omarchy's screensaver** off in the control panel to switch it
-  back on.
+- The first time it loads, the control panel opens and asks whether After
+  Dark should replace Omarchy's built-in terminal screensaver. Nothing of
+  Omarchy's changes until you choose **Replace Omarchy's screensaver**, which
+  switches the built-in one off with Omarchy's own toggle
+  (`omarchy toggle screensaver`). **Not now**, or closing the panel, leaves it
+  on, and both start on idle. The same switch is at the bottom of the control
+  panel, so you can change your mind either way.
 - Two launcher entries appear: **After Dark** (the control panel) and
   **After Dark: Start Screensaver**.
 
@@ -65,6 +68,28 @@ never starts while the session is locked, and it respects Omarchy's
 stay-awake indicator.
 
 Any key, click, scroll, or mouse movement ends the screensaver.
+
+## Remove
+
+If you let After Dark replace Omarchy's screensaver, turn **Replace Omarchy's
+screensaver** off in the control panel first, so Omarchy's own comes back on.
+Then:
+
+```bash
+omarchy plugin remove io.github.mindows.mib-afterdark
+```
+
+If you already removed it, switch Omarchy's screensaver back on with
+`omarchy-toggle screensaver-off off`.
+
+The launcher entries, your settings, community modules and scores stay
+behind; to remove those too:
+
+```bash
+rm -f ~/.local/share/applications/mib-afterdark.desktop \
+      ~/.local/share/applications/mib-afterdark-start.desktop
+rm -rf ~/.config/mib-afterdark ~/.local/state/mib-afterdark
+```
 
 ## The control panel
 
@@ -134,7 +159,7 @@ Nothing is sent anywhere. After Dark makes no network requests.
 |---|---|
 | `~/.config/mib-afterdark/settings.json` | your choices; hand edits are read back live |
 | `~/.config/mib-afterdark/screensavers/` | community screensaver modules |
-| `~/.local/state/mib-afterdark/state.json` | what the screensavers remember: Pong's lifetime score, high scores |
+| `~/.local/state/mib-afterdark/state.json` | what the screensavers remember (Pong's lifetime score, high scores), and that the first-run question was answered |
 | `~/.local/share/applications/mib-afterdark*.desktop` | the two launcher entries (only files carrying the `X-MIB-AfterDark-Managed` marker are ever written) |
 
 ## Community screensavers
