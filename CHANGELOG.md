@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Moon Patrol: a self-driving moon buggy jumps craters, blasts boulders and
+  shoots down saucers on an endless A-to-Z course. Options for pace, arcade or
+  theme colors, and Quattro (on by default): rally stages driven by a quattro,
+  and a rare winged quattro worth 5000.
+
 ## 0.1.0
 
 First release.

@@ -5,7 +5,7 @@
   "version": "0.1.0",
   "author": "Min Kim",
   "license": "MIT",
-  "description": "Omarchy After Dark: nine screensavers that take over when the machine goes idle. Flying Quattros, Matrix Operator, Omarchy Invaders, Pong Forever, Asteroids, Pipes, Starfield, Plasma, and a Terminal Aquarium, with random rotation by category, favorites, per-screensaver options, and optional live system data. Open the control panel with: omarchy-shell shell toggle io.github.mindows.mib-afterdark",
+  "description": "Omarchy After Dark: ten screensavers that take over when the machine goes idle. Flying Quattros, Matrix Operator, Omarchy Invaders, Pong Forever, Asteroids, Moon Patrol, Pipes, Starfield, Plasma, and a Terminal Aquarium, with random rotation by category, favorites, per-screensaver options, and optional live system data. Open the control panel with: omarchy-shell shell toggle io.github.mindows.mib-afterdark",
   "repository": "https://github.com/mindows/mib-afterdark",
   "kinds": [
     "overlay"

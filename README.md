@@ -25,6 +25,7 @@ screensaver.
 | Arcade | **Omarchy Invaders** | A self-playing invasion: package swarms, dependency attacks where one hit takes out everything below it, a kernel boss, sudo power-ups and a Quattro bonus stage. |
 | Arcade | **Pong Forever** | QUATTRO vs TUX, a match that may continue for months. Classic, Impossible, Four Paddle, Multiball, Tiny Paddle, Quattro vs Tux, and Ludicrous. The lifetime score serves absolutely no purpose and is therefore preserved. |
 | Arcade | **Asteroids** | A vector ship that aims, dodges and jumps to hyperspace on its own. In Omarchy mode the rocks are `node_modules`, `texlive-full`, `sudo` and friends. |
+| Arcade | **Moon Patrol** | A six-wheeled buggy drives the lunar highway from A to Z on its own, jumping craters, blasting boulders and shooting saucers and their bombs out of the sky. With Quattro on, some stretches are a rally stage in a quattro, and a winged one now and then flies over, worth 5000 if the buggy can hit it. |
 | Classic | **Pipes** | The 3D pipes, grown in shaded, neon or wireframe until the room is full. |
 | Classic | **Starfield** | From a faithful minimal cruise to completely excessive hyperspace. Every few minutes the ship jumps to warp on its own. |
 | Classic | **Plasma** | Demo-scene plasma with a sine scroller. Minimal configuration, maximum late-1990s energy. |
