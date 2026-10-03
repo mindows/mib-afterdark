@@ -33,7 +33,11 @@ Item {
   readonly property string letters: "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
   // The vehicle on the road: the buggy, or the quattro on a rally stage.
-  readonly property bool rally: quattroTwist && stagePoint(point)
+  // updateRally() decides it, so a change can be announced.
+  property bool rally: false
+  // Switching Quattro on starts a stage at once, lasting until this point.
+  property int rallyEnd: -1
+  onQuattroTwistChanged: if (quattroTwist) rallyEnd = point + 2
   readonly property real carW: (rally ? 30 : 24) * px
 
   property real dist: 0
@@ -87,10 +91,26 @@ Item {
 
   // ------------------------------------------------------------ the game
 
-  // Quattro stages are two points long and start at E, M and U.
+  // Quattro stages are two points long and start at A, I and Q, so every
+  // game opens on one.
   function stagePoint(p) {
     var i = p % 26
-    return i === 4 || i === 5 || i === 12 || i === 13 || i === 20 || i === 21
+    return i === 0 || i === 1 || i === 8 || i === 9 || i === 16 || i === 17
+  }
+
+  function updateRally() {
+    var want = root.quattroTwist && (stagePoint(root.point) || root.point < root.rallyEnd)
+    if (want === root.rally) return
+    // A stage that starts a new lap leaves COURSE COMPLETE up; one that
+    // ends because Quattro was switched off earns nothing.
+    if (want && !(root.point > 0 && root.point % 26 === 0)) showBanner("QUATTRO STAGE", 2.2)
+    if (!want && root.quattroTwist) {
+      root.score += 2000
+      showBanner("STAGE CLEAR 2000", 2.2)
+    }
+    if (root.car.alive)
+      explode(root.buggyX + root.carW / 2, root.groundY - 4 * root.px - root.car.h, 30, 200, root.scene.lip, true)
+    root.rally = want
   }
 
   function freshCar() {
@@ -103,9 +123,7 @@ Item {
   }
 
   function pointBanner() {
-    var letter = root.letters.charAt(root.point % 26)
-    if (root.rally && !stagePoint(root.point - 1)) showBanner("QUATTRO STAGE", 2.2)
-    else showBanner("POINT " + letter, 1.6)
+    showBanner("POINT " + root.letters.charAt(root.point % 26), 1.6)
   }
 
   function saveHiScore() {
@@ -128,7 +146,10 @@ Item {
     root.shots = []
     root.nextSpawn = root.width * 0.9
     root.car = freshCar()
-    showBanner("POINT A", 2)
+    root.rallyEnd = -1
+    // Set directly: GAME OVER goes up right after this and should stay.
+    root.rally = root.quattroTwist && stagePoint(0)
+    showBanner(root.rally ? "QUATTRO STAGE" : "POINT A", 2)
   }
 
   function insertObstacle(o) {
@@ -334,23 +355,18 @@ Item {
 
     var reached = Math.floor(root.dist / root.pointLength)
     if (reached !== root.point) {
-      var wasRally = root.rally
       root.point = reached
       root.score += 500
       if (root.point % 26 === 0) {
         root.lap++
         root.score += 5000
         showBanner("COURSE COMPLETE", 2.5)
-      } else if (wasRally && !root.rally) {
-        root.score += 2000
-        showBanner("STAGE CLEAR 2000", 2.2)
       } else {
         pointBanner()
       }
-      if (wasRally !== root.rally)
-        explode(root.buggyX + root.carW / 2, root.groundY - 4 * root.px - c.h, 30, 200, root.scene.lip, true)
       saveHiScore()
     }
+    updateRally()
 
     spawn()
     root.obstacles = root.obstacles.filter(function(o) { return o.x + o.w > root.dist - 100 * root.unit })
