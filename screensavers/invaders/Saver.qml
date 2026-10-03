@@ -46,7 +46,7 @@ Item {
   property int animFrame: 0
   property var cascade: []
 
-  property var ship: ({ x: 0, alive: true, respawn: 0, cooldown: 0, sudo: 0 })
+  property var ship: ({ x: 0, vx: 0, alive: true, respawn: 0, cooldown: 0, sudo: 0, decide: 0, targetKey: "", trackKey: "", trackX: 0, trackV: 0, aimError: 0, leadSkill: 1, pace: 1, wander: -1 })
   property var shots: []
   property var bombs: []
   property var sparks: []
@@ -128,7 +128,7 @@ Item {
     root.lives = 3
     root.level = 0
     root.waveIndex = -1
-    root.ship = { x: root.width / 2, alive: true, respawn: 0, cooldown: 0, sudo: 0 }
+    root.ship = { x: root.width / 2, vx: 0, alive: true, respawn: 0, cooldown: 0, sudo: 0, decide: 0, targetKey: "", trackKey: "", trackX: 0, trackV: 0, aimError: 0, leadSkill: 1, pace: 1, wander: -1 }
     nextWave()
   }
 
@@ -170,6 +170,11 @@ Item {
     return root.bombs
   }
 
+  // The defender plays like a person rather than a turret: it settles on a
+  // target for a moment before choosing again (usually the nearest, not
+  // always), aims a little off and misjudges the march, drifts about now and
+  // then, and speeds up and slows down instead of snapping into place.
+  // Dodging stays a reflex.
   function think(dt) {
     var s = root.ship
     var shipW = 13 * root.px
@@ -189,57 +194,93 @@ Item {
       if (Math.abs(b.x - center) < shipW * 0.9) dodge += b.x < center ? 1 : -1
     }
 
-    var targetX = center
-    var targetValid = false
+    // A fresh aim, pace and mood every so often.
+    s.decide -= dt
+    if (s.decide <= 0) {
+      s.decide = Util.rand(0.25, 0.7)
+      s.aimError = Util.rand(-22, 22) * root.unit
+      s.pace = Util.rand(0.55, 1)
+      s.wander = Util.chance(14) ? Util.rand(0.15, 0.85) * root.width : -1
+    }
+
+    // Where each possible target will be when a shot gets there, and how
+    // fast that point is moving.
+    var targets = []
     if (root.boss) {
-      targetX = root.boss.x + root.boss.vx * 0.3
-      targetValid = true
+      var bossFlight = (root.shipY - root.boss.y) / root.shotSpeed
+      targets.push({ key: "boss", x: root.boss.x + root.boss.vx * bossFlight, v: root.boss.vx })
     } else if (root.waveKind === "bonus") {
-      var best = 1e9
       for (var q = 0; q < root.bonusCars.length; q++) {
         var car = root.bonusCars[q]
-        var lead = (root.shipY - car.y) / root.shotSpeed
-        var fx = car.x + car.w / 2 + car.vx * lead
-        if (fx < 0 || fx > root.width) continue
-        if (Math.abs(fx - center) < best) { best = Math.abs(fx - center); targetX = fx; targetValid = true }
+        var fx = car.x + car.w / 2 + car.vx * (root.shipY - car.y) / root.shotSpeed
+        if (!car.key) car.key = "car:" + Math.random()
+        if (fx > 0 && fx < root.width) targets.push({ key: car.key, x: fx, v: car.vx })
       }
     } else {
-      // The column whose lowest enemy is closest.
+      // The lowest enemy of each column.
       var lowest = {}
       for (var e = 0; e < root.enemies.length; e++) {
         var en = root.enemies[e]
         if (en.alive && (!lowest[en.col] || lowest[en.col].row < en.row)) lowest[en.col] = en
       }
-      var bestD = 1e9
-      for (var c in lowest) {
-        var ex = enemyX(lowest[c]) + 5.5 * root.px + marchLead(root.shipY - enemyY(lowest[c]))
-        if (Math.abs(ex - center) < bestD) { bestD = Math.abs(ex - center); targetX = ex; targetValid = true }
-      }
+      var marchV = root.formDir * root.marchStep / marchInterval()
+      for (var c in lowest)
+        targets.push({ key: "col:" + c, x: enemyX(lowest[c]) + 5.5 * root.px, lead: marchLead(root.shipY - enemyY(lowest[c])), v: marchV })
     }
+    // Keep after the chosen target until it is shot at or gone. A new one is
+    // usually the nearest, sometimes another one not far off.
+    for (var l = 0; l < targets.length; l++) if (targets[l].lead !== undefined) targets[l].x += targets[l].lead
+    targets.sort(function(a, z) { return Math.abs(a.x - center) - Math.abs(z.x - center) })
+    var target = null
+    for (var k = 0; k < targets.length; k++) if (targets[k].key === s.targetKey) target = targets[k]
+    if (!target && targets.length) {
+      var near = targets.filter(function(o) { return Math.abs(o.x - center) < root.width * 0.3 })
+      target = near.length > 1 && Math.random() < 0.2 ? Util.pick(near.slice(1)) : targets[0]
+      s.targetKey = target.key
+      // How well it will judge this one's march, settled once per target.
+      s.leadSkill = Util.rand(0.75, 1.15)
+    }
+    if (target && target.lead !== undefined) target.x += (s.leadSkill - 1) * target.lead
+    var wandering = s.wander >= 0 || !target
+    var goalX = s.wander >= 0 ? s.wander : (target ? target.x + s.aimError : center)
+    // How fast the aim point really moves (it stops short of the edge where
+    // the formation turns), judged from the last moments.
+    if (target && target.key === s.trackKey)
+      s.trackV += ((target.x - s.trackX) / Math.max(dt, 0.001) - s.trackV) * Math.min(1, dt / 0.25)
+    else if (target) {
+      s.trackKey = target.key
+      s.trackV = target.v
+    }
+    if (target) s.trackX = target.x
+    var goalV = wandering ? 0 : s.trackV
 
-    var move = 0
-    if (dodge !== 0) move = dodge > 0 ? speed : -speed
-    else if (targetValid) {
-      move = Util.clamp((targetX - center) * 8, -speed, speed)
-      // Wait beside a falling bomb rather than slide back under it.
+    // Steer with some inertia, keeping up with a moving target.
+    var want = 0
+    if (dodge !== 0) want = dodge > 0 ? speed : -speed
+    else want = Util.clamp(goalV + (goalX - center) * 5, -speed * s.pace, speed * s.pace)
+    var accel = speed * (dodge !== 0 ? 14 : 5)
+    s.vx += Util.clamp(want - s.vx, -accel * dt, accel * dt)
+    // Wait beside a falling bomb rather than slide back under it.
+    if (dodge === 0) {
       for (var f = 0; f < falling.length; f++) {
-        if (Math.abs(falling[f].x - (center + move * dt)) < shipW * 0.9) { move = 0; break }
+        if (Math.abs(falling[f].x - (center + s.vx * dt)) < shipW * 0.9) { s.vx = 0; break }
       }
     }
-    s.x = Util.clamp(s.x + move * dt, shipW / 2 + 10 * root.unit, root.width - shipW / 2 - 10 * root.unit)
+    var lo = shipW / 2 + 10 * root.unit, hi = root.width - shipW / 2 - 10 * root.unit
+    s.x = Util.clamp(s.x + s.vx * dt, lo, hi)
+    if (s.x === lo || s.x === hi) s.vx = 0
 
     s.cooldown -= dt
     var maxShots = s.sudo > 0 ? 9 : 2
-    // Only once lined up: a shot fired while still sliding over clips the
-    // edge of its target.
-    if (targetValid && dodge === 0 && Math.abs(targetX - s.x) < 4 * root.unit && s.cooldown <= 0 && root.shots.length < maxShots) {
+    if (!wandering && dodge === 0 && Math.abs(goalX - s.x) < 10 * root.unit && s.cooldown <= 0 && root.shots.length < maxShots) {
       var y = root.shipY
       root.shots.push({ x: s.x, y: y, vx: 0 })
       if (s.sudo > 0) {
         root.shots.push({ x: s.x, y: y, vx: -160 * root.unit })
         root.shots.push({ x: s.x, y: y, vx: 160 * root.unit })
       }
-      s.cooldown = s.sudo > 0 ? 0.18 : 0.32
+      s.cooldown = s.sudo > 0 ? 0.18 : Util.rand(0.28, 0.55)
+      if (Math.random() < 0.3) s.targetKey = ""
     }
   }
 
@@ -319,6 +360,7 @@ Item {
         }
         s.alive = true
         s.x = root.width / 2
+        s.vx = 0
         root.bombs = []
       }
     }
