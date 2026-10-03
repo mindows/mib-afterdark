@@ -227,8 +227,9 @@ Item {
       var lead = (gun.y - t.y) / shotSpeed
       aim = Math.abs(t.x + t.vx * lead + t.w / 2 - gun.x) < 14 * root.unit
     }
+    // The same window a shot needs to hit a bomb.
     for (var k = 0; k < root.bombs.length && !aim; k++)
-      aim = Math.abs(root.bombs[k].x - gun.x) < 20 * root.unit && root.bombs[k].y < gun.y - 60 * root.unit
+      aim = Math.abs(root.bombs[k].x - gun.x) < 3 * root.px && root.bombs[k].y < gun.y - 60 * root.unit
     if (aim) {
       root.shots.push({ up: true, x: gun.x, y: gun.y, travelled: 0 })
       c.upCool = 0.22
@@ -315,8 +316,9 @@ Item {
       c.respawn -= dt
       if (c.respawn <= 0) {
         if (root.lives < 0) {
-          showBanner("GAME OVER", 3)
+          // After newGame(), which would replace it with "POINT A".
           newGame()
+          showBanner("GAME OVER", 3)
         } else {
           // Back on the road with a clear stretch ahead.
           var clearTo = root.dist + root.width * 0.7
@@ -368,12 +370,16 @@ Item {
       // They patrol back and forth until their time is up, then leave.
       if (ufo.life > 0 && ufo.x > root.width * 0.85 && ufo.vx > 0) ufo.vx = -ufo.vx
       if (ufo.life > 0 && ufo.x < root.width * 0.05 && ufo.vx < 0) ufo.vx = -ufo.vx
-      ufo.bomb -= dt
+      // The bomb clock waits while the car is down, so a respawn is not met
+      // by every saucer dropping at once.
+      if (c.alive) ufo.bomb -= dt
       if (ufo.bomb <= 0 && c.alive) {
         root.bombs.push({ x: ufo.x + 6 * root.px, y: ufo.y + 6 * root.px, vy: 120 * root.unit })
         ufo.bomb = root.frantic ? Util.rand(0.8, 2) : Util.rand(1.2, 3)
       }
-      if (ufo.x > -200 * root.unit && ufo.x < root.width + 200 * root.unit) keptUfos.push(ufo)
+      // Still patrolling (the back of a flight starts further off screen), or
+      // not yet gone after leaving.
+      if (ufo.life > 0 || (ufo.x > -200 * root.unit && ufo.x < root.width + 200 * root.unit)) keptUfos.push(ufo)
     }
     root.ufos = keptUfos
 
@@ -413,12 +419,15 @@ Item {
     for (var s = 0; s < root.shots.length; s++) {
       var shot = root.shots[s]
       var spent = false
+      // Hit tests cover the whole stretch a shot moved this frame, so a slow
+      // frame (dt up to 0.05) cannot carry it through a small target.
       if (shot.up) {
-        shot.y -= 800 * root.unit * dt
+        var rise = 800 * root.unit * dt
+        shot.y -= rise
         spent = shot.y < -10
         for (var su = 0; !spent && su < root.ufos.length; su++) {
           var uu = root.ufos[su]
-          if (shot.x > uu.x && shot.x < uu.x + uu.w && shot.y > uu.y && shot.y < uu.y + 6 * root.px) {
+          if (shot.x > uu.x && shot.x < uu.x + uu.w && shot.y + rise > uu.y && shot.y < uu.y + 6 * root.px) {
             explode(uu.x + uu.w / 2, uu.y + 3 * root.px, 30, 260, "#ff6a5a", true)
             root.ufos.splice(su, 1)
             root.score += 100
@@ -426,7 +435,7 @@ Item {
           }
         }
         var fq = root.flyer
-        if (!spent && fq && shot.x > fq.x + fq.w * 0.15 && shot.x < fq.x + fq.w * 0.85 && shot.y > fq.y && shot.y < fq.y + fq.hgt) {
+        if (!spent && fq && shot.x > fq.x + fq.w * 0.15 && shot.x < fq.x + fq.w * 0.85 && shot.y + rise > fq.y && shot.y < fq.y + fq.hgt) {
           explode(fq.x + fq.w / 2, fq.y + fq.hgt / 2, 50, 280, "#ffd84a", true)
           explode(fq.x + fq.w / 2, fq.y + fq.hgt / 2, 30, 200, "#ffffff", true)
           root.flyer = null
@@ -436,7 +445,9 @@ Item {
         }
         for (var sb = 0; !spent && sb < root.bombs.length; sb++) {
           var bb = root.bombs[sb]
-          if (Math.abs(shot.x - bb.x) < 3 * root.px && Math.abs(shot.y - bb.y) < 4 * root.px) {
+          // The gap closed by the shot and the falling bomb together.
+          var gap = shot.y - bb.y
+          if (Math.abs(shot.x - bb.x) < 3 * root.px && gap < 4 * root.px && gap + rise + bb.vy * dt > -4 * root.px) {
             explode(bb.x, bb.y, 10, 120, "#ffd27a", true)
             root.bombs.splice(sb, 1)
             root.score += 50
@@ -445,6 +456,8 @@ Item {
         }
       } else {
         var move = 900 * root.unit * dt
+        // How far the shot closed on the rocks: its own move plus the road's.
+        var closed = move + (c.alive ? root.speed * dt : 0)
         shot.x += move
         shot.travelled += move
         spent = shot.travelled > root.width * 0.45
@@ -452,7 +465,7 @@ Item {
           var rock = root.obstacles[r]
           if (rock.kind !== "rock" || rock.hp <= 0) continue
           var rx = rock.x - root.dist
-          if (shot.x > rx && shot.x < rx + rock.w) {
+          if (shot.x > rx && shot.x - closed < rx + rock.w) {
             rock.hp--
             spent = true
             explode(shot.x, shot.y, 6, 100, root.scene.rock, false)
@@ -582,7 +595,6 @@ Item {
 
   // Each obstacle keeps the pooled item it was given until it goes, so an
   // item is only repainted when it takes a new obstacle.
-  property int serial: 0
   function slots(list, max) {
     var used = {}
     for (var i = 0; i < list.length; i++) if (list[i].slot !== undefined) used[list[i].slot] = true
@@ -594,7 +606,6 @@ Item {
         while (next < max && used[next]) next++
         if (next >= max) continue
         o.slot = next
-        o.serial = ++root.serial
         used[next] = true
       }
       bySlot[o.slot] = o
@@ -877,7 +888,8 @@ Item {
     Repeater {
       model: ["A", "E", "J", "O", "T", "Z"]
       PixelText {
-        x: root.letters.indexOf(modelData) / 25 * course.width - width / 2
+        // Each point is 1/26 of the bar, the scale `progress` uses.
+        x: root.letters.indexOf(modelData) / 26 * course.width - width / 2
         y: 16 * root.unit
         text: modelData
         color: root.scene.course
