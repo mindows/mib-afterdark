@@ -310,6 +310,14 @@ Item {
   function setBuiltInOff(off) {
     Quickshell.execDetached(["omarchy-toggle", "screensaver-off", off ? "on" : "off"])
     root.builtInOff = off
+    // Look again shortly, in case the toggle did not change after all.
+    builtInRecheck.restart()
+  }
+
+  Timer {
+    id: builtInRecheck
+    interval: 800
+    onTriggered: root.refreshBuiltIn()
   }
 
   // The first-run question. Closing the panel without answering counts as

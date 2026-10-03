@@ -17,9 +17,10 @@ Item {
   property var shown: null
   property string failure: ""
 
-  // Running a screensaver that uses live data: the runtime keeps its feed
-  // going while any host says so.
-  readonly property bool wantsFeed: running && !!shown && shown.system === true && failure === ""
+  // Showing a screensaver that uses live data; while it also runs, the
+  // runtime keeps its feed going.
+  readonly property bool usesFeed: !!shown && shown.system === true && failure === ""
+  readonly property bool wantsFeed: running && usesFeed
   onWantsFeedChanged: if (runtime) runtime.wantFeed(holder, wantsFeed)
   onRuntimeChanged: if (runtime) runtime.wantFeed(holder, wantsFeed)
   Component.onDestruction: if (runtime) runtime.wantFeed(holder, false)
@@ -45,7 +46,7 @@ Item {
       }
       return out
     }
-    system: holder.shown && holder.shown.system && holder.runtime && holder.runtime.liveData ? holder.runtime.feed : null
+    system: holder.usesFeed && holder.runtime && holder.runtime.liveData ? holder.runtime.feed : null
     uptime: holder.runtime ? holder.runtime.uptime : 0
     userName: holder.runtime ? holder.runtime.userName : ""
     hostName: holder.runtime ? holder.runtime.hostName : ""

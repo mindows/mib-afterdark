@@ -222,15 +222,18 @@ Item {
     // on both sides (a boss volley) never cancel out into standing still,
     // preferring one it can reach without passing under another. With no
     // clear spot in reach, get away from the nearest bomb.
-    var reach = shipW * 0.9
+    // A bomb hits within 6 art pixels of the ship's centre; keep a little
+    // more than that from it, not a whole ship's width.
+    var reach = 6 * root.px + 8 * root.unit
     var dodge = 0
+    var escape = -1
     if (!clearOf(falling, center, reach)) {
-      var escape = -1, escapeOpen = false, nearest = null
+      var escapeOpen = false, nearest = null
       for (var g = 0; g < falling.length; g++) {
         var bx = falling[g].x
         if (!nearest || Math.abs(bx - center) < Math.abs(nearest.x - center)) nearest = falling[g]
         for (var side = -1; side <= 1; side += 2) {
-          var x = bx + side * shipW
+          var x = bx + side * (reach + 4 * root.unit)
           if (x < lo || x > hi || !clearOf(falling, x, reach)) continue
           var open = pathOpen(falling, center, x, reach)
           if (escape < 0 || (open && !escapeOpen) || (open === escapeOpen && Math.abs(x - center) < Math.abs(escape - center))) {
@@ -303,8 +306,11 @@ Item {
     var goalV = wandering ? 0 : s.trackV
 
     // Steer with some inertia, keeping up with a moving target.
+    // A dodge steers to its clear spot and stops there, so a narrow gap
+    // between bombs is not overshot into the next one.
     var want = 0
-    if (dodge !== 0) want = dodge > 0 ? speed : -speed
+    if (escape >= 0) want = Util.clamp((escape - center) * 14, -speed, speed)
+    else if (dodge !== 0) want = dodge > 0 ? speed : -speed
     else want = Util.clamp(goalV + (goalX - center) * 5, -speed * s.pace, speed * s.pace)
     var accel = speed * (dodge !== 0 ? 14 : 5)
     s.vx += Util.clamp(want - s.vx, -accel * dt, accel * dt)

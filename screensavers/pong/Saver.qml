@@ -337,11 +337,10 @@ Item {
       }
     }
     if (root.variant === "quattro-vs-tux" && root.paddles.length >= 2) {
-      // The car stands on its tail; rotation turns it about its centre. Its
-      // box reaches out from the edge margin by its full height, while the
-      // ball's line (paddleDepth) falls inside that box, on the car itself.
-      var carBack = paddleLine(root.paddles[0]) - paddleDepth(root.paddles[0])
-      carPaddle.x = carBack + carPaddle.height / 2 - carPaddle.width / 2
+      // The car stands on its tail; rotation turns it about its centre. It
+      // sits against the edge margin, and the ball's line (paddleDepth)
+      // falls inside its box, on the car itself.
+      carPaddle.x = root.edgeMargin + carPaddle.height / 2 - carPaddle.width / 2
       carPaddle.y = root.paddles[0].pos - carPaddle.height / 2
       tuxPaddle.x = paddleLine(root.paddles[1])
       tuxPaddle.y = root.paddles[1].pos - tuxPaddle.height / 2
