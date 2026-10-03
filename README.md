@@ -22,9 +22,9 @@ screensaver.
 |---|---|---|
 | Omarchy | **Flying Quattros** | Winged rally cars cross the sky in formation, trailing dust, snow or gravel. Near cars are big and fast, far ones small and slow. Some drive along the bottom, hit an invisible jump, and take off. The longer the machine idles, the worse the traffic gets. |
 | System | **Matrix Operator** | The computer as an overdramatic command-and-control system. Four views: an **operator** console (process table, network, event stream, core telemetry), **code rain** with real events surfacing in it, a Hollywood **intrusion** sequence built on harmless telemetry, and a live **trace** of processes and the hosts they talk to. |
-| Arcade | **Omarchy Invaders** | A self-playing invasion: package swarms, dependency attacks where one hit takes out everything below it, a kernel boss, sudo power-ups and a Quattro bonus stage. |
+| Arcade | **Omarchy Invaders** | A self-playing invasion: package swarms, dependency attacks where one hit takes out everything below it, a kernel boss, root power-ups and a Quattro bonus stage. |
 | Arcade | **Pong Forever** | QUATTRO vs TUX, a match that may continue for months. Classic, Impossible, Four Paddle, Multiball, Tiny Paddle, Quattro vs Tux, and Ludicrous. The lifetime score serves absolutely no purpose and is therefore preserved. |
-| Arcade | **Asteroids** | A vector ship that aims, dodges and jumps to hyperspace on its own. In Omarchy mode the rocks are `node_modules`, `texlive-full`, `sudo` and friends. |
+| Arcade | **Asteroids** | A vector ship that aims, dodges and jumps to hyperspace on its own. In Omarchy mode the rocks are `node_modules`, `texlive-full`, `rm` and friends. |
 | Arcade | **Moon Patrol** | A six-wheeled buggy drives the lunar highway from A to Z on its own, jumping craters, blasting boulders and shooting saucers and their bombs out of the sky. With Quattro on, some stretches are a rally stage in a quattro, and a winged one now and then flies over, worth 5000 if the buggy can hit it. |
 | Classic | **Pipes** | The 3D pipes, grown in shaded, neon or wireframe until the room is full. |
 | Classic | **Starfield** | From a faithful minimal cruise to completely excessive hyperspace. Every few minutes the ship jumps to warp on its own. |
@@ -193,9 +193,11 @@ fragment shaders, and nothing redraws a full-screen canvas every frame. On a
 
 ## Development
 
+Work in your own copy of this repository, and point Omarchy at it with a
+symlink in place of an installed copy:
+
 ```bash
-git clone https://github.com/mindows/mib-afterdark.git
-ln -sfn "$PWD/mib-afterdark" ~/.config/omarchy/plugins/io.github.mindows.mib-afterdark
+ln -sfn "$PWD" ~/.config/omarchy/plugins/io.github.mindows.mib-afterdark
 omarchy plugin enable io.github.mindows.mib-afterdark
 ```
 

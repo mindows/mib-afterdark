@@ -29,7 +29,7 @@ Item {
     "docker", "containerd", "sshd", "walker", "mako", "btop", "kworker/2:1", "ksoftirqd/0",
     "gpg-agent", "dbus-broker", "systemd-journald", "systemd-resolved", "tailscaled", "code"
   ]
-  readonly property var units: ["systemd", "kernel", "NetworkManager", "sshd", "sudo", "systemd-logind", "bluetoothd", "tailscaled", "dockerd", "pacman"]
+  readonly property var units: ["systemd", "kernel", "NetworkManager", "sshd", "pipewire", "systemd-logind", "bluetoothd", "tailscaled", "dockerd", "pacman"]
   readonly property var packages: ["linux", "mesa", "hyprland", "firefox", "neovim", "python", "nodejs", "rust", "qt6-base", "pipewire"]
 
   property var pool: []

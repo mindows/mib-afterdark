@@ -19,7 +19,7 @@ Item {
 
   readonly property var bigLabels: ["node_modules", "texlive-full", "electron", "systemd", "chromium", "linux-firmware", "llvm", "rustc"]
   readonly property var midLabels: ["npm", "pip", "cargo", "yay", "go", "gcc", "qt6", "mesa", "hypr", "nvim"]
-  readonly property var smallLabels: ["$", ">_", "~", "#", "&&", "|", "*", "!!", "sudo", "rm"]
+  readonly property var smallLabels: ["$", ">_", "~", "#", "&&", "|", "*", "!!", "root", "rm"]
 
   property var ship: ({ x: 0, y: 0, vx: 0, vy: 0, a: -Math.PI / 2, alive: true, invuln: 3, cooldown: 0, respawn: 0, thrust: false })
   property var rocks: []

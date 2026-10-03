@@ -47,8 +47,8 @@ Item {
     " (  o   o   o   )>",
     "  '~~~~~~~~~~~~~'"
   ]
-  readonly property var sudoSubArt: [
-    "   sudo",
+  readonly property var rootSubArt: [
+    "   root",
     "    _|_",
     "  _(o_o)>"
   ]
@@ -158,7 +158,7 @@ Item {
     var roll = Math.random()
     if (roll < 0.35) {
       // The smallest submarine in the fleet, and the most privileged.
-      add("rare", root.sudoSubArt, "#f2c230", 35, swimY(), Math.random() < 0.5)
+      add("rare", root.rootSubArt, "#f2c230", 35, swimY(), Math.random() < 0.5)
     } else if (roll < 0.7) {
       add("rare", root.tuxArt, "#f5f5f0", 55, swimY(), Math.random() < 0.5)
     } else {
