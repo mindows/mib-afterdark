@@ -22,6 +22,8 @@ Item {
   readonly property int cols: 10
   readonly property real groundY: height - 70 * unit
   readonly property real shipY: groundY - 8 * px - 10 * unit
+  readonly property real shotSpeed: 720 * unit
+  readonly property real marchStep: 12 * unit
 
   readonly property var kindArt: ({ bug: Sprites.enemyBug, dependency: Sprites.enemyDependency, package: Sprites.enemyPackage })
   readonly property var kindColors: ({
@@ -174,13 +176,17 @@ Item {
     var center = s.x
     var speed = root.width * (root.frantic ? 0.6 : 0.42)
 
-    // Dodge first: a bomb that will land on us soon.
+    // Dodge first: a bomb that will land on us soon. A bomb stays a threat
+    // until it has fallen past the bottom of the ship, not just its top.
     var dodge = 0
     var list = threats()
+    var falling = []
     for (var i = 0; i < list.length; i++) {
       var b = list[i]
-      var t = (root.shipY - b.y) / Math.max(1, b.vy)
-      if (t > 0 && t < 0.7 && Math.abs(b.x - center) < shipW * 0.9) dodge += b.x < center ? 1 : -1
+      var t = (root.shipY + 8 * root.px - b.y) / Math.max(1, b.vy)
+      if (t <= 0 || t >= 0.7) continue
+      falling.push(b)
+      if (Math.abs(b.x - center) < shipW * 0.9) dodge += b.x < center ? 1 : -1
     }
 
     var targetX = center
@@ -192,7 +198,7 @@ Item {
       var best = 1e9
       for (var q = 0; q < root.bonusCars.length; q++) {
         var car = root.bonusCars[q]
-        var lead = (root.shipY - car.y) / (700 * root.unit)
+        var lead = (root.shipY - car.y) / root.shotSpeed
         var fx = car.x + car.w / 2 + car.vx * lead
         if (fx < 0 || fx > root.width) continue
         if (Math.abs(fx - center) < best) { best = Math.abs(fx - center); targetX = fx; targetValid = true }
@@ -206,19 +212,27 @@ Item {
       }
       var bestD = 1e9
       for (var c in lowest) {
-        var ex = enemyX(lowest[c]) + 5.5 * root.px
+        var ex = enemyX(lowest[c]) + 5.5 * root.px + marchLead(root.shipY - enemyY(lowest[c]))
         if (Math.abs(ex - center) < bestD) { bestD = Math.abs(ex - center); targetX = ex; targetValid = true }
       }
     }
 
     var move = 0
     if (dodge !== 0) move = dodge > 0 ? speed : -speed
-    else if (targetValid) move = Util.clamp((targetX - center) * 8, -speed, speed)
+    else if (targetValid) {
+      move = Util.clamp((targetX - center) * 8, -speed, speed)
+      // Wait beside a falling bomb rather than slide back under it.
+      for (var f = 0; f < falling.length; f++) {
+        if (Math.abs(falling[f].x - (center + move * dt)) < shipW * 0.9) { move = 0; break }
+      }
+    }
     s.x = Util.clamp(s.x + move * dt, shipW / 2 + 10 * root.unit, root.width - shipW / 2 - 10 * root.unit)
 
     s.cooldown -= dt
     var maxShots = s.sudo > 0 ? 9 : 2
-    if (targetValid && dodge === 0 && Math.abs(targetX - s.x) < 10 * root.unit && s.cooldown <= 0 && root.shots.length < maxShots) {
+    // Only once lined up: a shot fired while still sliding over clips the
+    // edge of its target.
+    if (targetValid && dodge === 0 && Math.abs(targetX - s.x) < 4 * root.unit && s.cooldown <= 0 && root.shots.length < maxShots) {
       var y = root.shipY
       root.shots.push({ x: s.x, y: y, vx: 0 })
       if (s.sudo > 0) {
@@ -229,11 +243,33 @@ Item {
     }
   }
 
+  // Seconds between marching steps. Fewer enemies, faster march: the
+  // classic panic.
+  function marchInterval() {
+    return Math.max(0.05, 0.62 * aliveEnemies() / (root.rows * root.cols)) * (root.frantic ? 0.6 : 1) / (1 + root.level * 0.15)
+  }
+
+  // How far the formation will have marched sideways by the time a shot
+  // fired now climbs `distance`, stopping at the edge where it turns.
+  function marchLead(distance) {
+    var steps = Math.floor((root.stepClock + distance / root.shotSpeed) / marchInterval())
+    if (steps <= 0) return 0
+    var minX = 1e9, maxX = -1e9
+    for (var i = 0; i < root.enemies.length; i++) {
+      var e = root.enemies[i]
+      if (!e.alive) continue
+      minX = Math.min(minX, enemyX(e))
+      maxX = Math.max(maxX, enemyX(e) + 11 * root.px)
+    }
+    var room = root.formDir > 0 ? root.width - 20 * root.unit - maxX : minX - 20 * root.unit
+    steps = Math.min(steps, Math.max(0, Math.floor(room / root.marchStep)))
+    return root.formDir * root.marchStep * steps
+  }
+
   function stepFormation(dt) {
     var alive = aliveEnemies()
     if (alive === 0) return
-    // Fewer enemies, faster march: the classic panic.
-    var interval = Math.max(0.05, 0.62 * alive / (root.rows * root.cols)) * (root.frantic ? 0.6 : 1) / (1 + root.level * 0.15)
+    var interval = marchInterval()
     root.stepClock += dt
     if (root.stepClock < interval) return
     root.stepClock = 0
@@ -246,7 +282,7 @@ Item {
       maxX = Math.max(maxX, enemyX(e) + 11 * root.px)
       maxY = Math.max(maxY, enemyY(e) + 8 * root.px)
     }
-    var stepX = 12 * root.unit * root.formDir
+    var stepX = root.marchStep * root.formDir
     if (maxX + stepX > root.width - 20 * root.unit || minX + stepX < 20 * root.unit) {
       root.formY += root.cellH * 0.4
       root.formDir = -root.formDir
@@ -353,7 +389,7 @@ Item {
     var keptShots = []
     for (var i = 0; i < root.shots.length; i++) {
       var shot = root.shots[i]
-      shot.y -= 720 * root.unit * dt
+      shot.y -= root.shotSpeed * dt
       shot.x += shot.vx * dt
       var spent = shot.y < 0
       for (var j = 0; !spent && j < root.enemies.length; j++) {
@@ -434,7 +470,27 @@ Item {
   function bossW() { return root.boss && root.boss.kind === "tux" ? 12 * root.px * 3 : 180 * root.unit }
   function bossH() { return root.boss && root.boss.kind === "tux" ? 12 * root.px * 3 : 150 * root.unit }
 
+  // The ship, boss and capsule change in place, which no binding sees, so
+  // they are placed here every frame like everything else.
   function sync() {
+    var s = root.ship
+    shipItem.visible = s.alive
+    shipItem.x = s.x - shipItem.width / 2
+    shipItem.sudo = s.sudo > 0
+    var boss = root.boss
+    bossItem.visible = !!boss
+    if (boss) {
+      bossItem.kind = boss.kind
+      bossItem.x = boss.x - bossItem.width / 2
+      bossItem.y = boss.y - bossItem.height / 2
+      bossItem.opacity = boss.hurt > 0 ? 0.55 : 1
+      bossItem.health = boss.hp / boss.maxHp
+    }
+    capsuleItem.visible = !!root.capsule
+    if (root.capsule) {
+      capsuleItem.x = root.capsule.x
+      capsuleItem.y = root.capsule.y
+    }
     for (var i = 0; i < root.rows * root.cols; i++) {
       var item = enemyRepeater.itemAt(i)
       if (!item) continue
@@ -451,10 +507,10 @@ Item {
       links.drawnKey = linkKey
       links.requestPaint()
     }
-    for (var s = 0; s < 12; s++) {
-      var shotItem = shotRepeater.itemAt(s)
+    for (var n = 0; n < 12; n++) {
+      var shotItem = shotRepeater.itemAt(n)
       if (!shotItem) continue
-      var shot = root.shots[s]
+      var shot = root.shots[n]
       shotItem.visible = !!shot
       if (shot) { shotItem.x = shot.x - shotItem.width / 2; shotItem.y = shot.y }
     }
@@ -552,15 +608,14 @@ Item {
   // Boss: the kernel, drawn as a chip; or, rarely, a giant penguin.
   Item {
     id: bossItem
-    visible: !!root.boss
-    width: root.bossW()
-    height: root.bossH()
-    x: root.boss ? root.boss.x - width / 2 : 0
-    y: root.boss ? root.boss.y - height / 2 : 0
-    opacity: root.boss && root.boss.hurt > 0 ? 0.55 : 1
+    property string kind: "kernel"
+    property real health: 1
+    visible: false
+    width: kind === "tux" ? 12 * root.px * 3 : 180 * root.unit
+    height: kind === "tux" ? 12 * root.px * 3 : 150 * root.unit
 
     Rectangle {
-      visible: !!root.boss && root.boss.kind === "kernel"
+      visible: bossItem.kind === "kernel"
       anchors.centerIn: parent
       width: parent.width * 0.78
       height: parent.height * 0.78
@@ -605,7 +660,7 @@ Item {
       }
     }
     PixelSprite {
-      visible: !!root.boss && root.boss.kind === "tux"
+      visible: bossItem.kind === "tux"
       rows: Sprites.tux
       colors: Sprites.tuxPalette
       pixel: root.px * 3
@@ -616,7 +671,7 @@ Item {
       height: 6 * root.unit
       color: "#30333a"
       Rectangle {
-        width: parent.width * (root.boss ? root.boss.hp / root.boss.maxHp : 0)
+        width: parent.width * bossItem.health
         height: parent.height
         color: "#e8433a"
       }
@@ -635,11 +690,11 @@ Item {
 
   PixelSprite {
     id: shipItem
-    visible: root.ship.alive
+    property bool sudo: false
+    visible: false
     rows: Sprites.ship
-    colors: ({ K: "#0b0b0d", W: root.ship.sudo > 0 ? "#f2c230" : "#e8e8e8", Y: "#e8433a" })
+    colors: ({ K: "#0b0b0d", W: sudo ? "#f2c230" : "#e8e8e8", Y: "#e8433a" })
     pixel: root.px
-    x: root.ship.x - width / 2
     y: root.shipY
   }
 
@@ -662,9 +717,8 @@ Item {
   }
 
   Rectangle {
-    visible: !!root.capsule
-    x: root.capsule ? root.capsule.x : 0
-    y: root.capsule ? root.capsule.y : 0
+    id: capsuleItem
+    visible: false
     width: capsuleText.width + 12 * root.unit
     height: capsuleText.height + 8 * root.unit
     radius: height / 2
