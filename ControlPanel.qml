@@ -416,7 +416,9 @@ PanelWindow {
           module: panel.shown ? panel.selected : null
           runtime: panel.runtime
           preview: true
-          running: panel.shown && !panel.askingReplace
+          // Not behind the first-run question, nor while the screensaver
+          // itself runs (or sleeps under the lock screen) over the panel.
+          running: panel.shown && !panel.askingReplace && !(panel.runtime && panel.runtime.saverActive)
         }
 
         MouseArea {
@@ -562,7 +564,7 @@ PanelWindow {
           Toggle {
             text: "Replace Omarchy's screensaver"
             checked: !!panel.runtime && panel.runtime.builtInOff
-            onToggled: panel.runtime.setReplaceBuiltIn(!checked)
+            onToggled: panel.runtime.setBuiltInOff(!checked)
           }
           Label {
             anchors.verticalCenter: parent.verticalCenter

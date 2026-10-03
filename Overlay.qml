@@ -65,12 +65,18 @@ Item {
 
   // Live data runs only while some screensaver that uses it is running on
   // screen, full screen or in the control panel's preview. Each SaverHost
-  // counts itself in and out.
-  property int feedUsers: 0
+  // says whether it wants it; saying so twice changes nothing.
+  property var feedHosts: []
+
+  function wantFeed(host, on) {
+    var next = root.feedHosts.filter(function(h) { return h !== host })
+    if (on) next.push(host)
+    if (next.length !== root.feedHosts.length) root.feedHosts = next
+  }
 
   SystemFeed {
     id: feed
-    active: store.settings.liveData && root.feedUsers > 0
+    active: store.settings.liveData && root.feedHosts.length > 0
   }
 
   // ------------------------------------------------------------ choosing
@@ -307,25 +313,29 @@ Item {
     refreshTimer.restart()
   }
 
-  // The panel's switch shows Omarchy's own toggle, so it always tells the
-  // truth, however the toggle came to be set.
-  function setReplaceBuiltIn(on) {
-    setBuiltInOff(on)
-  }
-
   // The first-run question. Closing the panel without answering counts as
   // "not now"; the switch stays in the panel's footer either way.
   function answerReplace(replace) {
     if (!root.askingReplace) return
     root.askingReplace = false
     store.setAskedReplace()
-    if (replace) root.setReplaceBuiltIn(true)
+    if (replace) root.setBuiltInOff(true)
   }
 
   Timer {
     id: refreshTimer
     interval: 500
     onTriggered: root.refreshBuiltIn()
+  }
+
+  // The panel's switch shows Omarchy's own toggle, so it always tells the
+  // truth, however the toggle came to be set; the toggles folder is watched
+  // for changes made elsewhere.
+  FileView {
+    path: Quickshell.env("HOME") + "/.local/state/omarchy/toggles"
+    watchChanges: true
+    printErrors: false
+    onFileChanged: root.refreshBuiltIn()
   }
 
   Process {

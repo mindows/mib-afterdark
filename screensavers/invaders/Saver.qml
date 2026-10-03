@@ -175,6 +175,12 @@ Item {
     spark(s.x, root.shipY + 4 * root.px, "#ffffff", 40)
   }
 
+  // Whether `x` is out of reach of every bomb in `falling`.
+  function clearOf(falling, x, reach) {
+    for (var i = 0; i < falling.length; i++) if (Math.abs(falling[i].x - x) < reach) return false
+    return true
+  }
+
   // Everything that can hit the defender, as { x, y, vy }.
   function threats() {
     return root.bombs
@@ -185,7 +191,7 @@ Item {
   // always), aims a little off and misjudges the march, drifts about now and
   // then, and speeds up and slows down instead of snapping into place.
   // Dodging stays a reflex.
-  function think(dt) {
+  function think(dt, m) {
     var s = root.ship
     var shipW = 13 * root.px
     var center = s.x
@@ -201,23 +207,23 @@ Item {
       var t = (root.shipY + 8 * root.px - b.y) / Math.max(1, b.vy)
       if (t > 0 && t < 0.7) falling.push(b)
     }
-    function clear(x) {
-      for (var j = 0; j < falling.length; j++) if (Math.abs(falling[j].x - x) < shipW * 0.9) return false
-      return true
-    }
     // Under a bomb, head for the nearest spot clear of all of them, so bombs
     // on both sides (a boss volley) never cancel out into standing still.
+    // With no clear spot in reach, get away from the nearest one.
+    var reach = shipW * 0.9
     var dodge = 0
-    if (!clear(center)) {
-      var escape = -1
+    if (!clearOf(falling, center, reach)) {
+      var escape = -1, nearest = null
       for (var g = 0; g < falling.length; g++) {
-        var sides = [falling[g].x - shipW, falling[g].x + shipW]
-        for (var h = 0; h < 2; h++) {
-          var x = sides[h]
-          if (x >= lo && x <= hi && clear(x) && (escape < 0 || Math.abs(x - center) < Math.abs(escape - center))) escape = x
+        var bx = falling[g].x
+        if (!nearest || Math.abs(bx - center) < Math.abs(nearest.x - center)) nearest = falling[g]
+        for (var side = -1; side <= 1; side += 2) {
+          var x = bx + side * shipW
+          if (x >= lo && x <= hi && clearOf(falling, x, reach) && (escape < 0 || Math.abs(x - center) < Math.abs(escape - center))) escape = x
         }
       }
-      dodge = escape >= 0 && escape < center ? -1 : 1
+      if (escape >= 0) dodge = escape < center ? -1 : 1
+      else dodge = nearest.x < center ? 1 : -1
     }
 
     // A fresh aim, pace and mood every so often.
@@ -248,7 +254,6 @@ Item {
         var en = root.enemies[e]
         if (en.alive && (!lowest[en.col] || lowest[en.col].row < en.row)) lowest[en.col] = en
       }
-      var m = march()
       var marchV = root.formDir * root.marchStep / m.interval
       for (var c in lowest)
         targets.push({ key: "col:" + c, x: enemyX(lowest[c]) + 5.5 * root.px, lead: marchLead(root.shipY - enemyY(lowest[c]), m), v: marchV })
@@ -287,7 +292,7 @@ Item {
     var accel = speed * (dodge !== 0 ? 14 : 5)
     s.vx += Util.clamp(want - s.vx, -accel * dt, accel * dt)
     // Wait beside a falling bomb rather than slide back under it.
-    if (dodge === 0 && !clear(center + s.vx * dt)) s.vx = 0
+    if (dodge === 0 && !clearOf(falling, center + s.vx * dt, reach)) s.vx = 0
     s.x = Util.clamp(s.x + s.vx * dt, lo, hi)
     if (s.x === lo || s.x === hi) s.vx = 0
 
@@ -305,25 +310,23 @@ Item {
     }
   }
 
-  // Seconds between marching steps. Fewer enemies, faster march: the
-  // classic panic.
-  function marchInterval() {
-    return Math.max(0.05, 0.62 * aliveEnemies() / (root.rows * root.cols)) * (root.frantic ? 0.6 : 1) / (1 + root.level * 0.15)
-  }
-
-  // The formation's march as it stands: its step interval, and how many
-  // steps it can take before it reaches the edge and turns.
+  // The formation's march as it stands, from one look at the enemies: how
+  // many are left, the seconds between steps (fewer enemies, faster march:
+  // the classic panic), how many steps it can take before it reaches the
+  // edge and turns, and how low it has come. Worked out once a frame.
   function march() {
-    var minX = 1e9, maxX = -1e9, maxY = 0
+    var alive = 0, minX = 1e9, maxX = -1e9, maxY = 0
     for (var i = 0; i < root.enemies.length; i++) {
       var e = root.enemies[i]
       if (!e.alive) continue
+      alive++
       minX = Math.min(minX, enemyX(e))
       maxX = Math.max(maxX, enemyX(e) + 11 * root.px)
       maxY = Math.max(maxY, enemyY(e) + 8 * root.px)
     }
     var room = root.formDir > 0 ? root.width - 20 * root.unit - maxX : minX - 20 * root.unit
-    return { interval: marchInterval(), stepsLeft: Math.max(0, Math.floor(room / root.marchStep)), maxY: maxY }
+    var interval = Math.max(0.05, 0.62 * alive / (root.rows * root.cols)) * (root.frantic ? 0.6 : 1) / (1 + root.level * 0.15)
+    return { alive: alive, interval: interval, stepsLeft: Math.max(0, Math.floor(room / root.marchStep)), maxY: maxY }
   }
 
   // How far the formation will have marched sideways by the time a shot
@@ -334,14 +337,12 @@ Item {
     return root.formDir * root.marchStep * Math.min(steps, m.stepsLeft)
   }
 
-  function stepFormation(dt) {
-    var alive = aliveEnemies()
-    if (alive === 0) return
+  function stepFormation(dt, m) {
+    if (m.alive === 0) return
     root.stepClock += dt
-    if (root.stepClock < marchInterval()) return
+    if (root.stepClock < m.interval) return
     root.stepClock = 0
     root.animFrame = 1 - root.animFrame
-    var m = march()
     if (m.stepsLeft < 1) {
       root.formY += root.cellH * 0.4
       root.formDir = -root.formDir
@@ -367,7 +368,9 @@ Item {
     var s = root.ship
     if (s.sudo > 0) s.sudo -= dt
 
-    if (s.alive) think(dt)
+    var formation = root.waveKind === "swarm" || root.waveKind === "dependency"
+    var marching = formation ? march() : null
+    if (s.alive) think(dt, marching)
     else {
       s.respawn -= dt
       if (s.respawn <= 0) {
@@ -382,7 +385,7 @@ Item {
       }
     }
 
-    if (root.waveKind === "swarm" || root.waveKind === "dependency") stepFormation(dt)
+    if (formation) stepFormation(dt, marching)
 
     // Cascading dependency failures.
     var pending = []
