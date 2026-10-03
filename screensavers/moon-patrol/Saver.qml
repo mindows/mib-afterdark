@@ -111,6 +111,15 @@ Item {
     if (root.car.alive)
       explode(root.buggyX + root.carW / 2, root.groundY - 4 * root.px - root.car.h, 30, 200, root.scene.lip, true)
     root.rally = want
+    // The new vehicle is a different length with its roof gun elsewhere, so
+    // a bomb already falling may now land where it can't be shot. The swap's
+    // dust takes those out of the air.
+    var gunX = roofGun().x
+    root.bombs = root.bombs.filter(function(b) {
+      var doomed = b.x > root.buggyX && b.x < root.buggyX + root.carW && Math.abs(b.x - gunX) >= 3 * root.px
+      if (doomed) explode(b.x, b.y, 10, 120, "#ffd27a", true)
+      return !doomed
+    })
   }
 
   function freshCar() {
@@ -131,6 +140,9 @@ Item {
     root.hiScore = root.score
     if (root.host) root.host.set("hiscore", root.hiScore)
   }
+  // Points scored since the last checkpoint (a 5000 bonus, say) would
+  // otherwise be lost when the screensaver is dismissed.
+  Component.onDestruction: saveHiScore()
 
   function newGame() {
     saveHiScore()
@@ -158,6 +170,14 @@ Item {
     root.obstacles.splice(i, 0, o)
   }
 
+  // Obstacles of a kind on the road. Each needs one of that kind's pooled
+  // items, and one without would be invisible but still in the way.
+  function countKind(kind) {
+    var n = 0
+    for (var i = 0; i < root.obstacles.length; i++) if (root.obstacles[i].kind === kind) n++
+    return n
+  }
+
   function spawn() {
     // The road gets busier with every lap of the course, up to a point.
     var busy = Math.max(0.7, 1 - root.lap * 0.06) * (root.frantic ? 0.8 : 1)
@@ -165,10 +185,12 @@ Item {
       var roll = Math.random()
       var o = null
       if (roll < 0.45) {
-        o = { kind: "crater", x: root.nextSpawn, w: Util.rand(50, 130) * root.unit }
+        if (countKind("crater") < root.maxCraters)
+          o = { kind: "crater", x: root.nextSpawn, w: Util.rand(50, 130) * root.unit }
       } else if (roll < 0.85) {
         var big = Util.chance(3)
-        o = { kind: "rock", x: root.nextSpawn, big: big, w: (big ? 9 : 6) * root.px, hp: big ? 2 : 1 }
+        if (countKind("rock") < root.maxRocks)
+          o = { kind: "rock", x: root.nextSpawn, big: big, w: (big ? 9 : 6) * root.px, hp: big ? 2 : 1 }
       }
       if (o) {
         // Now and then the pilot misjudges a jump.
@@ -241,10 +263,10 @@ Item {
     var gun = roofGun()
     var shotSpeed = 800 * root.unit
     var aim = false
-    var targets = root.ufos.slice()
-    if (root.flyer) targets.push(root.flyer)
-    for (var u = 0; u < targets.length && !aim; u++) {
-      var t = targets[u]
+    // The saucers, then the winged quattro if one is up.
+    var targets = root.ufos.length + (root.flyer ? 1 : 0)
+    for (var u = 0; u < targets && !aim; u++) {
+      var t = u < root.ufos.length ? root.ufos[u] : root.flyer
       var lead = (gun.y - t.y) / shotSpeed
       aim = Math.abs(t.x + t.vx * lead + t.w / 2 - gun.x) < 14 * root.unit
     }
@@ -357,9 +379,11 @@ Item {
     // point (or a lap, at A) for going back.
     var reached = Math.floor(root.dist / root.pointLength)
     if (reached > root.point) {
+      // A resize can skip several points, Z and A among them.
+      var newLap = Math.floor(reached / 26) > Math.floor(root.point / 26)
       root.point = reached
       root.score += 500
-      if (root.point % 26 === 0) {
+      if (newLap) {
         root.lap++
         root.score += 5000
         showBanner("COURSE COMPLETE", 2.5)
@@ -373,8 +397,11 @@ Item {
     spawn()
     root.obstacles = root.obstacles.filter(function(o) { return o.x + o.w > root.dist - 100 * root.unit })
 
-    root.ufoClock -= dt
-    if (root.ufoClock <= 0 && root.ufos.length === 0 && !root.flyer && c.alive) {
+    // The clock is the quiet spell between flights, so it only runs while
+    // the sky is empty.
+    var skyClear = root.ufos.length === 0 && !root.flyer
+    if (skyClear) root.ufoClock -= dt
+    if (root.ufoClock <= 0 && skyClear && c.alive) {
       launchSky()
       root.ufoClock = root.frantic ? Util.rand(4, 9) : Util.rand(6, 14)
     }
@@ -432,7 +459,7 @@ Item {
         explode(bomb.x, root.groundY, 14, 160, "#ffd27a", false)
         // A bomb far enough ahead leaves a crater behind.
         var wx = bomb.x + root.dist
-        var room = wx > root.dist + root.buggyX + root.carW + root.reach
+        var room = wx > root.dist + root.buggyX + root.carW + root.reach && countKind("crater") < root.maxCraters
         for (var j = 0; room && j < root.obstacles.length; j++)
           if (Math.abs(root.obstacles[j].x - wx) < root.reach * 1.2) room = false
         if (room) insertObstacle({ kind: "crater", x: wx - 24 * root.unit, w: 48 * root.unit, error: 0 })
