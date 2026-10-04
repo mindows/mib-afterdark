@@ -8,6 +8,9 @@ import "../../lib/Util.js" as Util
 // the field briefing sign. The captain hops out and waves it off, then runs
 // to the briefing hut, and the base commander's orders type out on a
 // teletype. Everything is painted once and then only moved.
+//
+// Inspired by the opening of Captain Goodnight and the Islands of Fear
+// (Broderbund, 1985). The artwork and the story here are new.
 Item {
   id: root
 
@@ -48,12 +51,23 @@ Item {
     }
   }
 
-  // The sprites keep their colors in either mode, as the helicopter's
-  // livery would.
-  readonly property var ink: ({
-    W: "#ffffff", K: "#000000", O: "#f2681e", B: "#2a9df4", G: "#3fd13a", V: "#c35cff",
-    S: "#8fa9c8"
-  })
+  // The sprites keep their trim colors in either mode, as the helicopter's
+  // livery would. With theme colors their white and black follow the
+  // theme's foreground and background, so they still stand out from a light
+  // sky.
+  readonly property var ink: {
+    var trim = { O: "#f2681e", B: "#2a9df4", G: "#3fd13a", V: "#c35cff" }
+    if (!themed || !host) {
+      trim.W = "#ffffff"
+      trim.K = "#000000"
+      trim.S = "#8fa9c8"
+    } else {
+      trim.W = String(host.foreground)
+      trim.K = String(host.background)
+      trim.S = String(mix(host.background, host.foreground, 0.6))
+    }
+    return trim
+  }
 
   // ---------------------------------------------------------------- art
 
@@ -79,8 +93,8 @@ Item {
     "......WW................................W....W......................W.....W.......",
     ".........................................WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW........"
   ]
-  readonly property int heliCols: 82
-  readonly property int heliRows: 18
+  readonly property int heliCols: heliArt[0].length
+  readonly property int heliRows: heliArt.length
   // Where the pieces sit on the helicopter, in art pixels.
   readonly property point doorAt: Qt.point(55, 5)
   readonly property point tailRotorAt: Qt.point(5, 7)
@@ -298,8 +312,8 @@ Item {
   readonly property int captainStand: 0
   readonly property int captainWave: 1
   readonly property int captainRun: 2
-  readonly property int captainCols: 12
-  readonly property int captainRows: 15
+  readonly property int captainCols: captainFrames[0][0].length
+  readonly property int captainRows: captainFrames[0].length
 
   // The briefing hut: a log cabin with its door on the right.
   readonly property var hutArt: [
@@ -322,8 +336,8 @@ Item {
     "...WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWOOOOOOWWWW...",
     "...WBWOWBWOWBWOWBWOWBWOWBWOWBWOWBWOWOOOOOOWBWO..."
   ]
-  readonly property int hutCols: 49
-  readonly property int hutRows: 18
+  readonly property int hutCols: hutArt[0].length
+  readonly property int hutRows: hutArt.length
   // The door, in art pixels: columns 36 to 41, rows 6 to 17.
   readonly property rect hutDoor: Qt.rect(36, 6, 6, 12)
 
@@ -457,7 +471,8 @@ Item {
       list.push({
         x: Math.floor(Math.random() * root.width / root.px) * root.px,
         y: Math.floor(Math.random() * root.groundY * 0.8 / root.px) * root.px,
-        tint: Util.chance(6) ? (Util.chance(2) ? root.ink.V : root.ink.B) : root.scene.star
+        // An ink key for the odd colored star; the rest follow the scene.
+        tint: Util.chance(6) ? (Util.chance(2) ? "V" : "B") : ""
       })
     root.stars = list
   }
@@ -501,7 +516,7 @@ Item {
 
     switch (root.phase) {
     case "title":
-      if (t >= 4.5) go("approach")
+      if (t >= 4.5 || !root.showTitle) go("approach")
       break
 
     case "approach": {
@@ -533,6 +548,10 @@ Item {
 
     case "doorway":
       if (t >= 0.8) {
+        // Start the hop exactly where he stands in the doorway, so the
+        // ground figure never shows a frame at last cycle's position.
+        root.captainX = root.heliX + (root.doorAt.x - 1) * root.px
+        root.captainY = root.heliY + (root.doorAt.y + 1) * root.px
         root.captainAt = "ground"
         go("hop")
       }
@@ -541,8 +560,8 @@ Item {
     case "hop": {
       // Out of the doorway and down onto the grass in front of it.
       var h = Math.min(1, t / 0.45)
-      root.captainX = root.heliX + (root.doorAt.x - 2) * root.px
-      root.captainY = Math.round(Util.lerp(root.heliY + root.doorAt.y * root.px, root.groundY - root.captainRows * root.px, h)
+      root.captainX = Math.round(root.heliX + Util.lerp(root.doorAt.x - 1, root.doorAt.x - 2, h) * root.px)
+      root.captainY = Math.round(Util.lerp(root.heliY + (root.doorAt.y + 1) * root.px, root.groundY - root.captainRows * root.px, h)
         - Math.sin(h * Math.PI) * 4 * root.px)
       if (h >= 1) go("wave")
       break
@@ -605,7 +624,8 @@ Item {
       break
 
     case "briefing":
-      typeBriefing(dt)
+      if (!root.showBriefing) startCycle()
+      else typeBriefing(dt)
       break
 
     default:
@@ -624,10 +644,13 @@ Item {
     var line = lines[root.briefLine]
     // A blank line is a pause, as long as typing twelve characters.
     var length = line.length || 12
+    var before = Math.floor(root.briefChars)
     root.briefChars += dt * 32
     if (root.briefChars >= length) {
       root.briefChars = 0
       root.briefLine++
+    } else if (Math.floor(root.briefChars) === before && root.briefView.length) {
+      return
     }
     var done = lines.slice(0, root.briefLine)
     var view = done.slice(Math.max(0, done.length - root.briefRows + 1))
@@ -675,7 +698,7 @@ Item {
         y: modelData.y
         width: root.px
         height: root.px
-        color: modelData.tint
+        color: modelData.tint ? root.ink[modelData.tint] : root.scene.star
       }
     }
 
@@ -807,10 +830,13 @@ Item {
         width: 8 * root.px
         height: 9 * root.px
         clip: true
-        Captain {
+        PixelSprite {
           x: -root.px
           y: root.px
           visible: root.captainAt === "door"
+          rows: root.captainFrames[root.captainStand]
+          colors: root.ink
+          pixel: root.px
         }
       }
 
