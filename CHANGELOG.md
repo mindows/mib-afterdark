@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Captain Omarchy: the intro of a 1985 spy caper on a loop. A title card, a
+  helicopter landing at the field briefing hut, and the mission briefing on a
+  teletype. Options for 1985 or theme colors, the title card, and the
+  briefing.
+
 ## 0.1.0
 
 First release.

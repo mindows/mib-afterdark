@@ -12,7 +12,7 @@ A screensaver module is a folder:
 
 After Dark watches that folder: a new module appears in the control panel
 within a second, an edited `module.json` is read again, and a removed folder
-disappears. The nine bundled screensavers use exactly the same format, in
+disappears. The ten bundled screensavers use exactly the same format, in
 `screensavers/` in this repository; they are the best reference.
 
 [examples/bouncing-logo](examples/bouncing-logo) is a complete module to copy.

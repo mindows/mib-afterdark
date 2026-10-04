@@ -23,7 +23,7 @@ Item {
   }
 
   // The order the control panel lists the bundled modules in.
-  readonly property var bundledOrder: ["flying-quattros", "matrix-operator", "invaders", "pong", "asteroids", "pipes", "starfield", "plasma", "aquarium"]
+  readonly property var bundledOrder: ["flying-quattros", "matrix-operator", "invaders", "pong", "asteroids", "captain-omarchy", "pipes", "starfield", "plasma", "aquarium"]
 
   property var byId: ({})
   readonly property var modules: {

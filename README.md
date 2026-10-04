@@ -25,6 +25,7 @@ screensaver.
 | Arcade | **Omarchy Invaders** | A self-playing invasion: package swarms, dependency attacks where one hit takes out everything below it, a kernel boss, sudo power-ups and a Quattro bonus stage. |
 | Arcade | **Pong Forever** | QUATTRO vs TUX, a match that may continue for months. Classic, Impossible, Four Paddle, Multiball, Tiny Paddle, Quattro vs Tux, and Ludicrous. The lifetime score serves absolutely no purpose and is therefore preserved. |
 | Arcade | **Asteroids** | A vector ship that aims, dodges and jumps to hyperspace on its own. In Omarchy mode the rocks are `node_modules`, `texlive-full`, `sudo` and friends. |
+| Retro | **Captain Omarchy** | The opening of a 1985 home-computer spy caper. A helicopter sets the captain down by the field briefing sign under a starry sky; he waves it off and runs for the hut, and the base commander's orders come in on the teletype. Dr. Telemetry has given the Free World 24 hours. |
 | Classic | **Pipes** | The 3D pipes, grown in shaded, neon or wireframe until the room is full. |
 | Classic | **Starfield** | From a faithful minimal cruise to completely excessive hyperspace. Every few minutes the ship jumps to warp on its own. |
 | Classic | **Plasma** | Demo-scene plasma with a sine scroller. Minimal configuration, maximum late-1990s energy. |

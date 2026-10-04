@@ -1,0 +1,28 @@
+{
+  "id": "captain-omarchy",
+  "name": "Captain Omarchy",
+  "description": "A 1985 home-computer intro: a helicopter drops Captain Omarchy at the field briefing hut under a starry sky, and the base commander types out his orders. Dr. Telemetry has given the Free World 24 hours.",
+  "categories": ["retro", "omarchy", "calm"],
+  "entry": "Saver.qml",
+  "options": [
+    {
+      "key": "color",
+      "type": "enum",
+      "label": "Color",
+      "options": ["1985", "theme"],
+      "default": "1985"
+    },
+    {
+      "key": "title",
+      "type": "boolean",
+      "label": "Title card",
+      "default": true
+    },
+    {
+      "key": "briefing",
+      "type": "boolean",
+      "label": "Mission briefing",
+      "default": true
+    }
+  ]
+}
