@@ -77,7 +77,7 @@ Item {
 
   // The defender, at `x`, with nothing in mind yet.
   function freshShip(x) {
-    return { x: x, vx: 0, alive: true, respawn: 0, cooldown: 0, sudo: 0, decide: 0, targetKey: "", trackKey: "", trackX: 0, trackV: 0, aimError: 0, leadSkill: 1, pace: 1, wander: -1 }
+    return { x: x, vx: 0, alive: true, respawn: 0, cooldown: 0, power: 0, decide: 0, targetKey: "", trackKey: "", trackX: 0, trackV: 0, aimError: 0, leadSkill: 1, pace: 1, wander: -1 }
   }
 
   function nextWave() {
@@ -129,6 +129,10 @@ Item {
   function enemyX(e) { return root.formX + e.col * root.cellW + (root.cellW - 11 * root.px) / 2 }
   function enemyY(e) { return root.formY + e.row * root.cellH }
 
+  // A run dismissed before GAME OVER keeps its high score too. SaverHost
+  // unloads a module before switching its host to the next one.
+  Component.onDestruction: if (root.score > root.hiScore && root.host) root.host.set("hiscore", root.score)
+
   function newGame() {
     if (root.score > root.hiScore) {
       root.hiScore = root.score
@@ -170,7 +174,7 @@ Item {
     var s = root.ship
     s.alive = false
     s.respawn = 1.8
-    s.sudo = 0
+    s.power = 0
     root.lives--
     spark(s.x, root.shipY + 4 * root.px, "#ffffff", 40)
   }
@@ -320,15 +324,15 @@ Item {
     if (s.x === lo || s.x === hi) s.vx = 0
 
     s.cooldown -= dt
-    var maxShots = s.sudo > 0 ? 9 : 2
+    var maxShots = s.power > 0 ? 9 : 2
     if (!wandering && dodge === 0 && Math.abs(goalX - s.x) < 10 * root.unit && s.cooldown <= 0 && root.shots.length < maxShots) {
       var y = root.shipY
       root.shots.push({ x: s.x, y: y, vx: 0 })
-      if (s.sudo > 0) {
+      if (s.power > 0) {
         root.shots.push({ x: s.x, y: y, vx: -160 * root.unit })
         root.shots.push({ x: s.x, y: y, vx: 160 * root.unit })
       }
-      s.cooldown = s.sudo > 0 ? 0.18 : Util.rand(0.28, 0.55)
+      s.cooldown = s.power > 0 ? 0.18 : Util.rand(0.28, 0.55)
       if (Math.random() < 0.3) s.targetKey = ""
     }
   }
@@ -389,7 +393,7 @@ Item {
     }
     if (root.bannerTime > 0) root.bannerTime -= dt
     var s = root.ship
-    if (s.sudo > 0) s.sudo -= dt
+    if (s.power > 0) s.power -= dt
 
     var formation = root.waveKind === "swarm" || root.waveKind === "dependency"
     var marching = formation ? march() : null
@@ -398,8 +402,9 @@ Item {
       s.respawn -= dt
       if (s.respawn <= 0) {
         if (root.lives <= 0) {
-          showBanner("GAME OVER", 3)
+          // After newGame(), whose first wave would replace it.
           newGame()
+          showBanner("GAME OVER", 3)
           return
         }
         root.ship = freshShip(root.width / 2)
@@ -524,13 +529,13 @@ Item {
     }
     root.bombs = keptBombs
 
-    // The sudo capsule: triple shot for ten seconds.
+    // The root capsule: triple shot for ten seconds.
     if (root.capsule) {
       root.capsule.y += root.capsule.vy * dt
       if (s.alive && root.capsule.y > root.shipY - 10 * root.unit && Math.abs(root.capsule.x + 20 * root.unit - s.x) < 50 * root.unit) {
-        s.sudo = 10
+        s.power = 10
         root.capsule = null
-        showBanner("SUDO GRANTED", 1.5)
+        showBanner("ROOT GRANTED", 1.5)
       } else if (root.capsule.y > root.groundY) {
         root.capsule = null
       }
@@ -562,7 +567,7 @@ Item {
     var s = root.ship
     shipItem.visible = s.alive
     shipItem.x = s.x - shipItem.width / 2
-    shipItem.sudo = s.sudo > 0
+    shipItem.powered = s.power > 0
     var boss = root.boss
     bossItem.visible = !!boss
     if (boss) {
@@ -776,10 +781,10 @@ Item {
 
   PixelSprite {
     id: shipItem
-    property bool sudo: false
+    property bool powered: false
     visible: false
     rows: Sprites.ship
-    colors: ({ K: "#0b0b0d", W: sudo ? "#f2c230" : "#e8e8e8", Y: "#e8433a" })
+    colors: ({ K: "#0b0b0d", W: powered ? "#f2c230" : "#e8e8e8", Y: "#e8433a" })
     pixel: root.px
     y: root.shipY
   }
@@ -812,7 +817,7 @@ Item {
     PixelText {
       id: capsuleText
       anchors.centerIn: parent
-      text: "SUDO"
+      text: "ROOT"
       color: "#1a1208"
       pixel: 2.5 * root.unit
     }

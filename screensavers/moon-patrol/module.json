@@ -1,0 +1,29 @@
+{
+  "id": "moon-patrol",
+  "name": "Moon Patrol",
+  "description": "A six-wheeled moon buggy patrols an endless lunar highway on its own: it jumps craters, blasts boulders, and shoots saucers out of the sky. With Quattro on, some stretches are a rally stage, and a winged quattro now and then flies over.",
+  "categories": ["arcade", "retro"],
+  "entry": "Saver.qml",
+  "options": [
+    {
+      "key": "pace",
+      "type": "enum",
+      "label": "Pace",
+      "options": ["patrol", "frantic"],
+      "default": "patrol"
+    },
+    {
+      "key": "color",
+      "type": "enum",
+      "label": "Color",
+      "options": ["arcade", "theme"],
+      "default": "arcade"
+    },
+    {
+      "key": "quattro",
+      "type": "boolean",
+      "label": "Quattro",
+      "default": true
+    }
+  ]
+}

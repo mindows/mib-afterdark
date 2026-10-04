@@ -56,10 +56,13 @@ Item {
   }
 
   function show(m) {
+    // Unload first: the outgoing module's Component.onDestruction still sees
+    // its own host, so a last host.set() is not filed under the next module.
+    loader.source = ""
     holder.shown = m
     holder.failure = ""
     api.elapsed = 0
-    if (!m) { loader.source = ""; return }
+    if (!m) return
     // Initial properties, so a module sees its host in Component.onCompleted.
     loader.setSource(m.url, { host: api, running: Qt.binding(function() { return holder.running }) })
   }
