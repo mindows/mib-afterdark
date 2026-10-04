@@ -51,7 +51,8 @@ Item {
   // The sprites keep their colors in either mode, as the helicopter's
   // livery would.
   readonly property var ink: ({
-    W: "#ffffff", K: "#000000", O: "#f2681e", B: "#2a9df4", G: "#3fd13a", V: "#c35cff"
+    W: "#ffffff", K: "#000000", O: "#f2681e", B: "#2a9df4", G: "#3fd13a", V: "#c35cff",
+    S: "#8fa9c8"
   })
 
   // ---------------------------------------------------------------- art
@@ -107,73 +108,197 @@ Item {
   // The main rotor's span as it turns, in art pixels.
   readonly property var rotorSpans: [60, 44, 22, 44]
 
-  // The captain, facing right: standing, two running strides, and waving.
-  readonly property var captainFrames: [[
-    "...WWW...",
-    "..WWWBB..",
-    "..WWWBB..",
-    "...WWW...",
-    "....W....",
-    "..WWWWW..",
-    ".WWBWOWW.",
-    ".W.BWO.W.",
-    ".W.WWW.W.",
-    "...OOO...",
-    "...WWW...",
-    "...W.W...",
-    "...W.W...",
-    "...W.W...",
-    "..WW.WW.."
-  ], [
-    "...WWW...",
-    "..WWWBB..",
-    "..WWWBB..",
-    "...WWW...",
-    "....W....",
-    "..WWWWW..",
-    "..WBWOW..",
-    ".W.BWOW.W",
-    "W..WWW...",
-    "...OOO...",
-    "...WWW...",
-    "..W...W..",
-    ".W.....W.",
-    "W.......W",
-    "W.......W"
-  ], [
-    "...WWW...",
-    "..WWWBB..",
-    "..WWWBB..",
-    "...WWW...",
-    "....W....",
-    "..WWWWW..",
-    "..WBWOW..",
-    "..WBWOW..",
-    "..WWWW...",
-    "...OOO...",
-    "...WWW...",
-    "...WW....",
-    "...W.W...",
-    "...W.W...",
-    "...WW.W.."
-  ], [
-    "...WWW..W",
-    "..WWWBB.W",
-    "..WWWBB.W",
-    "...WWW.W.",
-    "....W.W..",
-    "..WWWWW..",
-    ".WWBWO...",
-    ".W.BWO...",
-    ".W.WWW...",
-    "...OOO...",
-    "...WWW...",
-    "...W.W...",
-    "...W.W...",
-    "...W.W...",
-    "..WW.WW.."
-  ]]
-  readonly property int captainCols: 9
+  // The captain, facing right. S is the far arm and leg, a shade darker,
+  // so the run reads as the legs trading places. The run is two strides of
+  // four poses each: reaching, sinking onto a bent knee, passing, and
+  // driving off with the other knee up. The back foot is only on the
+  // ground for the drive; the rest of the time its heel is kicked up.
+  readonly property var captainFrames: [
+    // Standing
+    [
+      "....WWW.....",
+      "...WWWBB....",
+      "...WWWBB....",
+      "....WWW.....",
+      ".....W......",
+      "...WWWWW....",
+      "..WWBWOWW...",
+      "..W.BWO.W...",
+      "..W.WWW.W...",
+      "....OOO.....",
+      "....WWW.....",
+      "....W.W.....",
+      "....W.W.....",
+      "....W.W.....",
+      "...WW.WW...."
+    ],
+    // Waving
+    [
+      "....WWW..W..",
+      "...WWWBB.W..",
+      "...WWWBB.W..",
+      "....WWW.W...",
+      ".....W.W....",
+      "...WWWWW....",
+      "..WWBWO.....",
+      "..W.BWO.....",
+      "..W.WWW.....",
+      "....OOO.....",
+      "....WWW.....",
+      "....W.W.....",
+      "....W.W.....",
+      "....W.W.....",
+      "...WW.WW...."
+    ],
+    // Running: contact, near leg leading
+    [
+      "....WWW.....",
+      "...WWWBB....",
+      "...WWWBB....",
+      "....WWW.....",
+      ".....W......",
+      "...WWWWW....",
+      "..W.BWOW.S..",
+      ".WW.BWO..SS.",
+      "WW..WWW.....",
+      "....OOO.....",
+      "....WWWW....",
+      "SS.SS..WW...",
+      ".SSS....WW..",
+      "........WW..",
+      "........WWW."
+    ],
+    // Running: down, near leg leading
+    [
+      "............",
+      ".....WWW....",
+      "....WWWBB...",
+      "....WWWBB...",
+      ".....WWW....",
+      "......W.....",
+      "....WWWWW...",
+      "..WWBWOWSSS.",
+      ".WW.BWO.....",
+      "....OOO.....",
+      "SS..WWWWW...",
+      ".SS.S..WWW..",
+      "..SSS..WW...",
+      "......WW....",
+      "......WWW..."
+    ],
+    // Running: passing, near leg leading
+    [
+      "....WWW.....",
+      "...WWWBB....",
+      "...WWWBB....",
+      "....WWW.....",
+      ".....W......",
+      "...WWWWW....",
+      "...WBWOWS...",
+      "..W.BWO.S...",
+      "..W.WWW.....",
+      "....OOO.....",
+      "....WWW.....",
+      "..SS.WW.....",
+      "...SSSW.....",
+      ".....WW.....",
+      ".....WWW...."
+    ],
+    // Running: push-off, near leg leading
+    [
+      "....WWW.....",
+      "...WWWBB....",
+      "...WWWBB....",
+      "....WWW.....",
+      ".....W......",
+      "...WWWWW....",
+      "..S.BWOW.W..",
+      ".SS.BWO..WW.",
+      "SS..WWW.....",
+      "....OOOSSS..",
+      "....WWW..SS.",
+      "...WWW...S..",
+      "..WWW.......",
+      ".WW.........",
+      "WW.........."
+    ],
+    // Running: contact, far leg leading
+    [
+      "....WWW.....",
+      "...WWWBB....",
+      "...WWWBB....",
+      "....WWW.....",
+      ".....W......",
+      "...WWWWW....",
+      "..S.BWOS.W..",
+      ".SS.BWO..WW.",
+      "SS..WWW.....",
+      "....OOO.....",
+      "....WWWS....",
+      "WW.WS..SS...",
+      ".WWW....SS..",
+      "........SS..",
+      "........SSS."
+    ],
+    // Running: down, far leg leading
+    [
+      "............",
+      ".....WWW....",
+      "....WWWBB...",
+      "....WWWBB...",
+      ".....WWW....",
+      "......W.....",
+      "....WWWWW...",
+      "..SSBWOSWWW.",
+      ".SS.BWO.....",
+      "....OOO.....",
+      "WW..WWWSS...",
+      ".WW.S..SSS..",
+      "..WWS..SS...",
+      "......WS....",
+      "......WSS..."
+    ],
+    // Running: passing, far leg leading
+    [
+      "....WWW.....",
+      "...WWWBB....",
+      "...WWWBB....",
+      "....WWW.....",
+      ".....W......",
+      "...WWWWW....",
+      "...SBWOSW...",
+      "..S.BWO.W...",
+      "..S.WWW.....",
+      "....OOO.....",
+      "....WWW.....",
+      "..WW.WW.....",
+      "...WSSW.....",
+      ".....WW.....",
+      ".....WWS...."
+    ],
+    // Running: push-off, far leg leading
+    [
+      "....WWW.....",
+      "...WWWBB....",
+      "...WWWBB....",
+      "....WWW.....",
+      ".....W......",
+      "...WWWWW....",
+      "..W.BWOS.S..",
+      ".WW.BWO..SS.",
+      "WW..WWW.....",
+      "....OOOWWW..",
+      "....WWW..WW.",
+      "...SWW...W..",
+      "..SSW.......",
+      ".SS.........",
+      "SS.........."
+    ]
+  ]
+  readonly property int captainStand: 0
+  readonly property int captainWave: 1
+  readonly property int captainRun: 2
+  readonly property int captainCols: 12
   readonly property int captainRows: 15
 
   // The briefing hut: a log cabin with its door on the right.
@@ -400,7 +525,7 @@ Item {
       root.doorOpen = Math.min(1, t / 0.5)
       if (t >= 0.6) {
         root.captainAt = "door"
-        root.captainFrame = 0
+        root.captainFrame = root.captainStand
         root.captainLeft = false
         go("doorway")
       }
@@ -416,7 +541,7 @@ Item {
     case "hop": {
       // Out of the doorway and down onto the grass in front of it.
       var h = Math.min(1, t / 0.45)
-      root.captainX = root.heliX + (root.doorAt.x - 1) * root.px
+      root.captainX = root.heliX + (root.doorAt.x - 2) * root.px
       root.captainY = Math.round(Util.lerp(root.heliY + root.doorAt.y * root.px, root.groundY - root.captainRows * root.px, h)
         - Math.sin(h * Math.PI) * 4 * root.px)
       if (h >= 1) go("wave")
@@ -424,7 +549,7 @@ Item {
     }
 
     case "wave":
-      root.captainFrame = Math.floor(t * 4) % 2 ? 3 : 0
+      root.captainFrame = Math.floor(t * 4) % 2 ? root.captainWave : root.captainStand
       root.doorOpen = Math.max(0, 1 - Math.max(0, t - 0.6) / 0.5)
       if (t >= 1.4) {
         root.departVX = 0
@@ -435,7 +560,7 @@ Item {
 
     case "depart":
       // Up first, then away to the right, while the captain waves it off.
-      root.captainFrame = t < 2.6 && Math.floor(t * 4) % 2 ? 3 : 0
+      root.captainFrame = t < 2.6 && Math.floor(t * 4) % 2 ? root.captainWave : root.captainStand
       root.departVY = Math.min(150 * root.unit, root.departVY + 160 * root.unit * dt)
       if (t > 0.6) root.departVX = Math.min(520 * root.unit, root.departVX + 300 * root.unit * dt)
       if (root.heliY > root.height * 0.2) root.heliY -= root.departVY * dt
@@ -443,7 +568,10 @@ Item {
       if (root.heliX > root.width) root.heliShown = false
       if (!root.heliShown && t >= 3) {
         root.status = root.waiting
+        // Turning round mirrors the sprite about its 12 columns, which would
+        // step him a column to the right; step him back.
         root.captainLeft = true
+        root.captainX -= root.px
         root.runFrom = root.captainX
         go("run")
       }
@@ -454,11 +582,13 @@ Item {
       // door is in front of him.
       var r = Math.min(1, t / 4.2)
       root.scroll = (root.hutHome - root.hutStart) * r
-      var target = root.hutHome + (root.hutDoor.x - 1.5) * root.px
+      // Mirrored, his middle is column 6 of 12; the door's is 39 of the hut.
+      var target = root.hutHome + (root.hutDoor.x - 3) * root.px
       root.captainX = Math.round(Util.lerp(root.runFrom, target, r))
-      root.captainFrame = 1 + Math.floor(t * 8) % 2
+      // Two strides of four poses, at about the pace he covers ground.
+      root.captainFrame = root.captainRun + Math.floor(t * 12) % 8
       if (r >= 1) {
-        root.captainFrame = 0
+        root.captainFrame = root.captainStand
         root.hutDoorOpen = true
         go("enter")
       }
@@ -678,6 +808,7 @@ Item {
         height: 9 * root.px
         clip: true
         Captain {
+          x: -root.px
           y: root.px
           visible: root.captainAt === "door"
         }
