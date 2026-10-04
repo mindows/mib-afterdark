@@ -361,7 +361,9 @@ Item {
   // ---------------------------------------------------------------- story
 
   readonly property string hq: {
-    var name = Util.cleanText(host ? host.hostName : "", 16).toUpperCase().replace(/[^A-Z0-9-]/g, "")
+    // Only what the pixel font can draw, cut after filtering so the FROM line
+    // always fits the teletype's 40 columns.
+    var name = String(host ? host.hostName : "").toUpperCase().replace(/[^A-Z0-9-]/g, "").substring(0, 16)
     return name || "OMARCHY"
   }
 
@@ -478,7 +480,6 @@ Item {
   }
 
   function startCycle() {
-    scatterStars()
     root.heliShown = false
     root.captainAt = ""
     root.doorOpen = 0
@@ -504,8 +505,10 @@ Item {
     if (root.width <= 0 || root.height <= 0) return
     var size = root.width + "x" + root.height
     if (root.builtFor !== size) {
-      // A new size moves everything, so the story starts again.
+      // A new size moves everything, so the stars are scattered again and
+      // the story starts over.
       root.builtFor = size
+      scatterStars()
       startCycle()
     }
     root.clock += dt
@@ -558,7 +561,7 @@ Item {
       break
 
     case "hop": {
-      // Out of the doorway and down onto the grass in front of it.
+      // Out of the doorway, over the sill and onto the grass in front of it.
       var h = Math.min(1, t / 0.45)
       root.captainX = Math.round(root.heliX + Util.lerp(root.doorAt.x - 1, root.doorAt.x - 2, h) * root.px)
       root.captainY = Math.round(Util.lerp(root.heliY + (root.doorAt.y + 1) * root.px, root.groundY - root.captainRows * root.px, h)
@@ -850,12 +853,20 @@ Item {
       }
     }
 
-    Captain {
-      visible: root.captainAt === "ground"
-      x: root.captainX
-      y: root.captainY
-      frame: root.captainFrame
-      facingLeft: root.captainLeft
+    // The captain on the field. He is taller than the doorway, so as he
+    // hops out his legs would reach below the grass line; the grass hides
+    // them until he has landed.
+    Item {
+      width: root.width
+      height: root.groundY
+      clip: true
+      Captain {
+        visible: root.captainAt === "ground"
+        x: root.captainX
+        y: root.captainY
+        frame: root.captainFrame
+        facingLeft: root.captainLeft
+      }
     }
   }
 

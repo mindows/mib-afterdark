@@ -1,7 +1,7 @@
 {
   "id": "captain-omarchy",
   "name": "Captain Omarchy",
-  "description": "A 1985 home-computer intro: a helicopter drops Captain Omarchy at the field briefing hut, and the base commander types out his orders. Inspired by Captain Goodnight and the Islands of Fear (Broderbund, 1985).",
+  "description": "A 1985 home-computer intro: a helicopter drops Captain Omarchy by the field briefing sign, he runs for the hut, and the base commander types out his orders. Inspired by Captain Goodnight and the Islands of Fear (Broderbund, 1985).",
   "categories": ["retro", "omarchy", "calm"],
   "entry": "Saver.qml",
   "options": [
