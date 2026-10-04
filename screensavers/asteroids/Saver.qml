@@ -19,7 +19,7 @@ Item {
 
   readonly property var bigLabels: ["node_modules", "texlive-full", "electron", "systemd", "chromium", "linux-firmware", "llvm", "rustc"]
   readonly property var midLabels: ["npm", "pip", "cargo", "yay", "go", "gcc", "qt6", "mesa", "hypr", "nvim"]
-  readonly property var smallLabels: ["$", ">_", "~", "#", "&&", "|", "*", "!!", "sudo", "rm"]
+  readonly property var smallLabels: ["$", ">_", "~", "#", "&&", "|", "*", "!!", "root", "rm"]
 
   property var ship: ({ x: 0, y: 0, vx: 0, vy: 0, a: -Math.PI / 2, alive: true, invuln: 3, cooldown: 0, respawn: 0, thrust: false })
   property var rocks: []
@@ -72,6 +72,10 @@ Item {
     root.banner = text
     root.bannerTime = seconds
   }
+
+  // A run dismissed before GAME OVER keeps its high score too. SaverHost
+  // unloads a module before switching its host to the next one.
+  Component.onDestruction: if (root.score > root.hiScore && root.host) root.host.set("hiscore", root.score)
 
   function newGame() {
     if (root.score > root.hiScore) {
@@ -230,8 +234,9 @@ Item {
       s.respawn -= dt
       if (s.respawn <= 0) {
         if (root.lives <= 0) {
-          showBanner("GAME OVER", 3)
+          // After newGame(), whose first wave would replace it.
           newGame()
+          showBanner("GAME OVER", 3)
         } else {
           resetShip()
         }
