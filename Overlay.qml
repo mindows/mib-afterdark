@@ -224,14 +224,16 @@ Item {
     onFileChanged: if (!stayAwakeProbe.running) stayAwakeProbe.running = true
   }
 
-  // IdleMonitor takes its timeout when it is enabled and ignores later
-  // changes, so it would keep the delay it started with (Omarchy's, before
-  // our settings load) however the delay is set afterwards. A new delay
-  // switches it off and on again to re-arm it.
+  // IdleMonitor does not pick up a timeout set after it is created: it
+  // keeps the delay it was created with (the fallback, before our settings
+  // and shell.json load), and a delay changed later in the control panel is
+  // missed the same way. Switching it off and on again after the change
+  // does pick it up, so a new delay re-arms it.
   property bool idleArmed: true
+  function rearmIdle() { root.idleArmed = true }
   onIdleSecondsChanged: {
     root.idleArmed = false
-    Qt.callLater(function() { root.idleArmed = true })
+    Qt.callLater(root.rearmIdle)
   }
 
   IdleMonitor {
@@ -242,7 +244,9 @@ Item {
     onIsIdleChanged: {
       if (isIdle) {
         if (!root.saverActive && !idleGate.running) idleGate.running = true
-      } else if (root.saverActive && !root.previewing) {
+      } else if (root.idleArmed && root.saverActive && !root.previewing) {
+        // Not while re-arming: that drops isIdle without any input, and
+        // real input still ends the screensaver through inputWatch.
         root.stop()
       }
     }
