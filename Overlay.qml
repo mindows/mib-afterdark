@@ -224,9 +224,19 @@ Item {
     onFileChanged: if (!stayAwakeProbe.running) stayAwakeProbe.running = true
   }
 
+  // IdleMonitor takes its timeout when it is enabled and ignores later
+  // changes, so it would keep the delay it started with (Omarchy's, before
+  // our settings load) however the delay is set afterwards. A new delay
+  // switches it off and on again to re-arm it.
+  property bool idleArmed: true
+  onIdleSecondsChanged: {
+    root.idleArmed = false
+    Qt.callLater(function() { root.idleArmed = true })
+  }
+
   IdleMonitor {
     id: idleMonitor
-    enabled: store.ready && store.settings.enabled && catalog.modules.length > 0 && root.stayAwakeKnown && !root.stayAwake
+    enabled: root.idleArmed && store.ready && store.settings.enabled && catalog.modules.length > 0 && root.stayAwakeKnown && !root.stayAwake
     timeout: root.idleSeconds
     respectInhibitors: true
     onIsIdleChanged: {

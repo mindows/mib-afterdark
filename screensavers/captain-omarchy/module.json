@@ -1,0 +1,28 @@
+{
+  "id": "captain-omarchy",
+  "name": "Captain Omarchy",
+  "description": "A 1985 home-computer intro: a helicopter drops Captain Omarchy by the field briefing sign, he runs for the hut, and the base commander types out his orders. Inspired by Captain Goodnight and the Islands of Fear (Broderbund, 1985).",
+  "categories": ["retro", "omarchy", "calm"],
+  "entry": "Saver.qml",
+  "options": [
+    {
+      "key": "color",
+      "type": "enum",
+      "label": "Color",
+      "options": ["1985", "theme"],
+      "default": "1985"
+    },
+    {
+      "key": "title",
+      "type": "boolean",
+      "label": "Title card",
+      "default": true
+    },
+    {
+      "key": "briefing",
+      "type": "boolean",
+      "label": "Mission briefing",
+      "default": true
+    }
+  ]
+}
