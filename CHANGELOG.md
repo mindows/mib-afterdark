@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.0
 
 - Moon Patrol: a self-driving moon buggy jumps craters, blasts boulders and
   shoots down saucers on an endless A-to-Z course. Options for pace, arcade or
@@ -10,6 +10,14 @@
   helicopter landing by the field briefing sign, a run to the hut, and the
   mission briefing on a teletype. Options for 1985 or theme colors, the title
   card, and the briefing.
+  Inspired by Captain Goodnight and the Islands of Fear (Broderbund, 1985).
+- A delay set in After Dark now takes effect. Before, its idle monitor kept
+  the delay it started with, so the screensaver waited for Omarchy's own
+  delay instead (10 minutes by default).
+- GAME OVER now shows in Asteroids and Invaders; a new game's first banner
+  used to replace it in the same frame.
+- The Invaders power-up is a root capsule now, and the Asteroids rocks no
+  longer include the old privilege command.
 
 ## 0.1.0
 
